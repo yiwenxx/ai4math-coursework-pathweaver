@@ -1,0 +1,16 @@
+name: Feature or interface suggestion
+description: Propose an improvement to a public capability.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: Problem and suggested behavior
+      description: Describe the public use case and a concrete improvement.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Acceptance criteria
+      description: Explain what would establish that the feature works.

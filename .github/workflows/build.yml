@@ -1,0 +1,25 @@
+name: Build public package
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.11', '3.12', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Check public content inventory
+        run: python scripts/check_publication.py
+      - name: Compile source
+        run: python scripts/check_scaffold.py
+      - name: Build wheel
+        run: python -m pip wheel . --no-deps --wheel-dir dist

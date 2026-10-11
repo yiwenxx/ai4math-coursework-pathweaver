@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pathweaver-math-agent"
+version = "0.1.0.dev0"
+description = "Public scaffold for verifiable combinatorial optimization algorithm discovery"
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+license = {text = "Apache-2.0"}
+authors = [{name = "PathWeaver contributors"}]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/yiwenxx/ai4math-coursework-pathweaver"
+Issues = "https://github.com/yiwenxx/ai4math-coursework-pathweaver/issues"
+
+[project.scripts]
+pathweaver = "pathweaver.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"pathweaver.tasks" = ["catalog.toml"]

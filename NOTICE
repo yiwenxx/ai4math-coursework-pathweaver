@@ -1,0 +1,6 @@
+PathWeaver
+Copyright 2026 PathWeaver contributors
+
+This public package contains PathWeaver source only.
+References to upstream projects are documented in docs/upstream.md.
+No upstream runtime or source is bundled in this initial publication.

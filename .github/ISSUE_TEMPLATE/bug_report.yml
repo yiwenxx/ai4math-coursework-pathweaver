@@ -1,0 +1,17 @@
+name: Bug report
+description: Report a reproducible public-package problem.
+labels: [bug]
+body:
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Include commands, Python version and observed behavior. Remove credentials and personal data.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
