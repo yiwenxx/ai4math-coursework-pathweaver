@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pathweaver-math-agent"
-version = "0.1.0.dev0"
+dynamic = ["version"]
 description = "Public scaffold for verifiable combinatorial optimization algorithm discovery"
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
@@ -21,6 +21,10 @@ pathweaver = "pathweaver.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+namespaces = false
+
+[tool.setuptools.dynamic]
+version = {attr = "pathweaver.__version__"}
 
 [tool.setuptools.package-data]
 "pathweaver.tasks" = ["catalog.toml"]
