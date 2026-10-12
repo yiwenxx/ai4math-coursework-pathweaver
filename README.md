@@ -2,7 +2,7 @@
 
 **面向可验证组合优化问题的算法发现框架。**
 
-[当前状态](STATUS.md) · [公开路线图](ROADMAP.md) · [进展记录](docs/progress.md) · [接口设计](docs/taskpacks.md) · [上游来源](docs/upstream.md)
+[当前状态](STATUS.md) · [公开路线图](ROADMAP.md) · [变更记录](CHANGELOG.md) · [接口设计](docs/taskpacks.md) · [上游来源](docs/upstream.md)
 
 PathWeaver 的目标是让同一个研究核心为不同任务生成候选算法、运行实验、分析失败并修正方法。任务通过 TaskPack 提供实例、约束、目标和独立验证。
 
@@ -39,8 +39,7 @@ src/pathweaver/
 ├── cli.py              离线信息入口
 ├── core/contracts.py   TaskPack、求解预算、评估与证据类型
 └── tasks/catalog.toml  公开任务目录
-docs/                   公开设计、来源与进展
-scripts/                构建与公开文件完整性检查
+docs/                   公开设计与来源
 .github/                构建 CI、Issue 与 PR 模板
 ```
 
@@ -48,7 +47,7 @@ scripts/                构建与公开文件完整性检查
 
 ## 持续开发
 
-通过 [Issues](https://github.com/yiwenxx/ai4math-coursework-pathweaver/issues)、[Pull requests](https://github.com/yiwenxx/ai4math-coursework-pathweaver/pulls)、变更日志和进展记录查看已发生的变化。公开路线图描述功能方向，具体完成情况以代码和构建结果为准。
+通过 [Issues](https://github.com/yiwenxx/ai4math-coursework-pathweaver/issues)、[Pull requests](https://github.com/yiwenxx/ai4math-coursework-pathweaver/pulls) 和变更日志查看已发生的变化。公开路线图描述功能方向，具体完成情况以代码和构建结果为准。
 
 欢迎提交可复现的问题、接口建议和改进 PR，参见 [贡献说明](CONTRIBUTING.md)。
 

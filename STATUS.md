@@ -1,6 +1,6 @@
 # Current status
 
-Updated: 2026-10-11
+Updated: 2026-10-12
 
 | Capability | State |
 |---|---|
@@ -14,4 +14,4 @@ Updated: 2026-10-11
 
 A successful build establishes packaging and Python compilation only. It does not establish mathematical correctness, execution isolation or algorithm quality.
 
-Use [progress](docs/progress.md), [changelog](CHANGELOG.md) and public issues to follow completed work.
+Use the [changelog](CHANGELOG.md) and public issues to follow completed work.
