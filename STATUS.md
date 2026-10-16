@@ -12,7 +12,7 @@ Updated: 2026-10-16 · Public development version: `0.1.0.dev1`
 | Path-guided minimum-cost matching | Implemented; observed on AES and Ibex; later proposal branches unexercised |
 | Public DEF/LEF/Liberty import and source geometry audit | Implemented; AES and Ibex observations available |
 | Bookshelf subset import and geometry audit | Available as a Python adapter; separate single-edge proxy |
-| Public comparison script | One end-to-end AES run passed on existing source files; one call per strategy |
+| Public comparison script | One end-to-end run each on existing AES and Ibex files passed; one call per strategy per case |
 | Other TaskPacks and autonomous algorithm discovery | Planned |
 | Execution isolation and API budget enforcement | Planned |
 
@@ -39,12 +39,22 @@ reference `(744915,32370920)`, baseline `(928085,35175360)` and path-matching
 maximum site load one, preserved HBT positions and zero overlaps. The baseline
 used 122 evaluations in 30.134280 seconds; path-matching used two in 1.803001 seconds.
 
-No code fix, additional case, seed or retry was needed. Source/build checks were
-not repeated for this documentation-only update. The public entrypoint's Ibex
-path has not been run; its component behavior remains supported by the earlier
-case workflow. See [the validation record](results/aes_entrypoint_validation.json)
-and [reproduction steps](docs/eda_public_cases.md). Wall-clock stopping can change
-evaluation counts and outcomes on another machine.
+A separate requested Ibex check on the same date ran the same public entrypoint
+once on existing files with the same budget. It exited 0 with reference
+`(1663875,47974340)`, baseline `(1835280,49687230)` and path-matching
+`(1663875,47840820)`. Each covers all 1592 data-graph cross edges with 1592 distinct
+eligible sites and maximum load one. All 1599 physical HBTs retain their position
+multiset with zero overlaps; seven fixed control HBTs have no data-graph cross edge.
+The baseline used 134 evaluations in 30.242825 seconds; path-matching used two
+in 1.310219 seconds. Both independent objective calculations agree for every row.
+
+Neither check required a code fix, extra seed or retry. The Ibex check did not
+rerun AES. No additional local build was needed for these documentation-only
+updates. See the [AES record](results/aes_entrypoint_validation.json),
+[Ibex record](results/ibex_entrypoint_validation.json) and
+[reproduction steps](docs/eda_public_cases.md). Wall-clock stopping can change
+evaluation counts and outcomes on another machine. Replaying these existing
+cases adds no new generalization sample.
 
 One untuned circuit supports limited strategy transfer, not general performance,
 autonomous discovery or physical timing improvement. See [generalization limits](docs/generalization.md).

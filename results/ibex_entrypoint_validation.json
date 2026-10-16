@@ -1,0 +1,142 @@
+{
+  "validation_date": "2026-10-16",
+  "public_version": "0.1.0.dev1",
+  "entrypoint": "scripts/compare_open3dbench.py",
+  "case": "Open3DBench Ibex default/cadb1021",
+  "input_source": "Existing local Ibex DEF, bottom/upper LEFs and typical Liberty; no new download.",
+  "status": "completed",
+  "exit_code": 0,
+  "budget": {
+    "wall_seconds": 30.0,
+    "max_evaluations": 1000,
+    "seed": 0
+  },
+  "solver_invocations": {
+    "baseline": 1,
+    "path-matching": 1
+  },
+  "counts": {
+    "node_count": 56611,
+    "edge_count": 76344,
+    "selected_net_count": 389,
+    "total_hbt_count": 1599,
+    "fixed_hbt_count": 1210,
+    "cross_edge_count": 1592,
+    "site_count": 1599,
+    "physical_only_hbt_count": 7
+  },
+  "outcomes": {
+    "reference": {
+      "status": "verified",
+      "objectives": [
+        1663875,
+        47974340
+      ],
+      "lower_bound": [
+        1663875,
+        47287300
+      ],
+      "evidence": "experimental",
+      "seconds": null,
+      "source_audit": {
+        "objectives": [
+          1663875,
+          47974340
+        ],
+        "total_split_hpwl": 147367135,
+        "split_net_count": 3198,
+        "hbt_positions_preserved": true,
+        "hbt_overlap_pairs": 0,
+        "capacity_one": true,
+        "method": "source driver-to-sink star graph; zero cell arcs; independent Kahn longest paths"
+      },
+      "assignment_checks": {
+        "assigned_edges": 1592,
+        "distinct_sites": 1592,
+        "maximum_site_load": 1,
+        "exact_edge_coverage": true,
+        "all_sites_eligible": true
+      }
+    },
+    "baseline": {
+      "status": "verified",
+      "objectives": [
+        1835280,
+        49687230
+      ],
+      "lower_bound": [
+        1663875,
+        47287300
+      ],
+      "evidence": "experimental",
+      "seconds": 30.242824799999653,
+      "source_audit": {
+        "objectives": [
+          1835280,
+          49687230
+        ],
+        "total_split_hpwl": 149080025,
+        "split_net_count": 3198,
+        "hbt_positions_preserved": true,
+        "hbt_overlap_pairs": 0,
+        "capacity_one": true,
+        "method": "source driver-to-sink star graph; zero cell arcs; independent Kahn longest paths"
+      },
+      "assignment_checks": {
+        "assigned_edges": 1592,
+        "distinct_sites": 1592,
+        "maximum_site_load": 1,
+        "exact_edge_coverage": true,
+        "all_sites_eligible": true
+      },
+      "solver": {
+        "evaluations": 134,
+        "termination": "wall_budget"
+      }
+    },
+    "path-matching": {
+      "status": "verified",
+      "objectives": [
+        1663875,
+        47840820
+      ],
+      "lower_bound": [
+        1663875,
+        47287300
+      ],
+      "evidence": "experimental",
+      "seconds": 1.3102193000013358,
+      "source_audit": {
+        "objectives": [
+          1663875,
+          47840820
+        ],
+        "total_split_hpwl": 147233615,
+        "split_net_count": 3198,
+        "hbt_positions_preserved": true,
+        "hbt_overlap_pairs": 0,
+        "capacity_one": true,
+        "method": "source driver-to-sink star graph; zero cell arcs; independent Kahn longest paths"
+      },
+      "assignment_checks": {
+        "assigned_edges": 1592,
+        "distinct_sites": 1592,
+        "maximum_site_load": 1,
+        "exact_edge_coverage": true,
+        "all_sites_eligible": true
+      },
+      "solver": {
+        "evaluations": 2,
+        "termination": "matching_minimum_at_path_bound"
+      }
+    }
+  },
+  "path_matching_vs_baseline": -1,
+  "limitations": [
+    "Only one public-entrypoint Ibex invocation; one call per strategy.",
+    "No additional case, seed, retry or strategy change; AES was not rerun.",
+    "Seven fixed control HBTs have no cross edge in the data graph and remain included in physical geometry checks.",
+    "Runtime differs from prior observations because wall-clock stopping is machine dependent.",
+    "This verifies the public entrypoint on existing data; it is not new generalization evidence."
+  ]
+}
