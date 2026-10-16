@@ -1,2 +1,2 @@
-"""Public catalogue scaffold; research-memory capabilities are not published here."""
-__version__ = "0.1.0.dev0"
+"""Verifiable EDA optimization prototype with independent evaluation."""
+__version__ = "0.1.0.dev1"

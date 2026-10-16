@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "task_id": "eda_assignment",
+  "instance_id": "eda_assignment_tied_sites_001",
+  "solution": {"assignment": {"ab": "s0", "ac": "s1"}},
+  "expected_objectives": [9, 12],
+  "provenance": "hand_authored_illustration_not_program_verified"
+}

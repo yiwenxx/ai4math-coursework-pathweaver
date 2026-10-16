@@ -11,7 +11,7 @@ Start with README, STATUS and existing public issues. Small, focused PRs are eas
 Default local validation is source compilation and a wheel build:
 
 ```bash
-python -m compileall -q src
+python -m compileall -q src scripts
 python -m pip wheel . --no-deps --wheel-dir dist
 ```
 

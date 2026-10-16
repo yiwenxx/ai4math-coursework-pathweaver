@@ -10,3 +10,8 @@ dist/
 !.env.example
 *.log
 .DS_Store
+artifacts/
+data/
+instance.json
+solution.json
+path-solution.json

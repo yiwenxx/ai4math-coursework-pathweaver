@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "Cite the public software and relevant upstream work separately."
 title: "ai4math课程作业——PathWeaver"
 type: software
-version: 0.1.0.dev0
+version: 0.1.0.dev1
 authors:
   - name: "PathWeaver contributors"
 repository-code: "https://github.com/yiwenxx/ai4math-coursework-pathweaver"

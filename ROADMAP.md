@@ -1,11 +1,14 @@
 # Public roadmap
 
-The order below is a development direction. Availability is reported in STATUS and public PRs.
+Availability and verification coverage are reported in [STATUS](STATUS.md).
 
-1. **Foundation:** stable task, result and evidence interfaces; installable offline tooling.
-2. **Runnable task:** a public instance format, independent verifier, baseline and reproducible example.
-3. **Search integration:** backend adapter, candidate execution and resumable runs.
-4. **Diagnostics:** task-supplied failure analysis and auditable candidate records.
-5. **Reproducible delivery:** frozen algorithm artifacts, public baselines and documented limitations.
+1. **Available:** task interfaces, runnable EDA solvers, independent verification,
+   examples, public-case reproduction and scoped result summaries.
+2. **Next research question:** understand behavior when the first global matching
+   cannot attain the relaxed path bound; existing public observations do not cover it.
+3. **Search integration:** candidate execution, backend integration and resource controls.
+4. **Task transfer:** implement a structurally different task behind the shared interface.
+5. **Research evidence:** measure whether feedback and research memory improve the
+   discovery process, with appropriate comparisons and honest failure reporting.
 
-Domain-specific task packs use the same core interfaces. Each published capability includes usage documentation and an honest implementation status.
+These are directions, not completed capabilities or a request to run additional experiments.

@@ -1,2 +1,8 @@
 schema_version = 1
-task = []
+[[task]]
+id = "eda_assignment"
+title = "Path-coupled hybrid-bonding assignment"
+scope = "primary"
+status = "implemented"
+implementation = "pathweaver.tasks.eda_assignment:EdaAssignmentTaskPack"
+objectives = ["min_longest_path", "min_wirelength_lexicographic"]
