@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "task_id": "eda_assignment",
+  "instance_id": "eda_assignment_illustration_001",
+  "data": {
+    "nodes": [
+      {
+        "id": "a",
+        "x": 0,
+        "y": 0,
+        "tier": 0
+      },
+      {
+        "id": "b",
+        "x": 4,
+        "y": 0,
+        "tier": 1
+      },
+      {
+        "id": "c",
+        "x": 0,
+        "y": 4,
+        "tier": 1
+      }
+    ],
+    "sites": [
+      {
+        "id": "s0",
+        "x": 2,
+        "y": 0
+      },
+      {
+        "id": "s1",
+        "x": 0,
+        "y": 2
+      }
+    ],
+    "edges": [
+      {
+        "id": "ab",
+        "source": "a",
+        "target": "b",
+        "base_delay": 1,
+        "alpha": 1,
+        "eligible_sites": [
+          "s0",
+          "s1"
+        ]
+      },
+      {
+        "id": "ac",
+        "source": "a",
+        "target": "c",
+        "base_delay": 1,
+        "alpha": 1,
+        "eligible_sites": [
+          "s0",
+          "s1"
+        ]
+      }
+    ]
+  }
+}

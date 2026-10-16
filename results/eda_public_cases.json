@@ -1,0 +1,111 @@
+{
+  "observation_date": "2026-10-15",
+  "publication_date": "2026-10-16",
+  "source": "Open3DBench Place-LoL published default/cadb1021 converted DEFs",
+  "source_url": "https://github.com/lamda-bbo/Open3DBench/tree/main/Place-LoL",
+  "environment": {
+    "python": "3.12.3 conda-forge",
+    "os": "Windows 11"
+  },
+  "objective_order": "minimize exact (T,L) lexicographically",
+  "reference_runtime": "unknown; published placement rescored, placer not rerun",
+  "observations": [
+    {
+      "case": "aes",
+      "role": "development",
+      "variant": "default",
+      "reference_method": "cadb1021",
+      "budget": {
+        "wall_seconds": 30,
+        "max_evaluations": 1000,
+        "seed": 0
+      },
+      "reference_objectives": [
+        744915,
+        32370920
+      ],
+      "lower_bound": [
+        744915,
+        29616520
+      ],
+      "independent_verification": "TaskPack and source geometry agree for all assignments",
+      "capacity_one": true,
+      "hbt_positions_preserved": true,
+      "hbt_overlap_pairs": 0,
+      "strategies": {
+        "baseline": {
+          "objectives": [
+            928085,
+            35175360
+          ],
+          "seconds": 30.103671699995175,
+          "evaluations": 275,
+          "termination": "wall_budget",
+          "invocations": 1
+        },
+        "path-matching": {
+          "objectives": [
+            744915,
+            32038820
+          ],
+          "seconds": 1.065545999997994,
+          "evaluations": 2,
+          "termination": "matching_minimum_at_path_bound",
+          "invocations": 1
+        }
+      }
+    },
+    {
+      "case": "ibex",
+      "role": "untuned_transfer",
+      "variant": "default",
+      "reference_method": "cadb1021",
+      "budget": {
+        "wall_seconds": 30,
+        "max_evaluations": 1000,
+        "seed": 0
+      },
+      "reference_objectives": [
+        1663875,
+        47974340
+      ],
+      "lower_bound": [
+        1663875,
+        47287300
+      ],
+      "independent_verification": "TaskPack and source geometry agree for all assignments",
+      "capacity_one": true,
+      "hbt_positions_preserved": true,
+      "hbt_overlap_pairs": 0,
+      "strategies": {
+        "baseline": {
+          "objectives": [
+            1835280,
+            49687230
+          ],
+          "seconds": 30.11229080001067,
+          "evaluations": 217,
+          "termination": "wall_budget",
+          "invocations": 1
+        },
+        "path-matching": {
+          "objectives": [
+            1663875,
+            47840820
+          ],
+          "seconds": 1.1468069999973522,
+          "evaluations": 2,
+          "termination": "matching_minimum_at_path_bound",
+          "invocations": 1
+        }
+      }
+    }
+  ],
+  "limitations": [
+    "One development circuit and one untuned transfer circuit, one seed each.",
+    "Both path-matching runs ended after the first matching; later proposal branches were not exercised.",
+    "Geometric proxy only; no STA, routing or PPA result.",
+    "Cooperative wall limits may overrun and change baseline outcomes across machines.",
+    "These are prior observations, not new runs of the public comparison script."
+  ]
+}

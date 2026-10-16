@@ -1,4 +1,4 @@
-"""Domain-neutral contracts; implementations are milestone work."""
+"""Domain-neutral contracts shared by implemented TaskPacks and research code."""
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Mapping, Protocol, Sequence

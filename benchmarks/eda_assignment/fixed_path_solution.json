@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "task_id": "eda_assignment",
+  "instance_id": "eda_assignment_fixed_path_001",
+  "solution": {"assignment": {"ab": "near"}},
+  "expected_objectives": [20, 4],
+  "provenance": "hand_authored_illustration_not_program_verified"
+}

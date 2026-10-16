@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pathweaver-math-agent"
 dynamic = ["version"]
-description = "Public scaffold for verifiable combinatorial optimization algorithm discovery"
+description = "Verifiable EDA path-coupled assignment with independent evaluation and reproducible solvers"
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
 license = {text = "Apache-2.0"}

@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "task_id": "eda_assignment",
+  "instance_id": "eda_assignment_fixed_path_001",
+  "data": {
+    "nodes": [
+      {"id": "a", "x": 0, "y": 0, "tier": 0},
+      {"id": "b", "x": 4, "y": 0, "tier": 1},
+      {"id": "fixed_start", "x": 0, "y": 10, "tier": 0},
+      {"id": "fixed_end", "x": 0, "y": 11, "tier": 0}
+    ],
+    "sites": [
+      {"id": "near", "x": 2, "y": 0},
+      {"id": "far", "x": 0, "y": 2}
+    ],
+    "edges": [
+      {"id": "ab", "source": "a", "target": "b", "base_delay": 1, "alpha": 1, "eligible_sites": ["near", "far"]},
+      {"id": "fixed", "source": "fixed_start", "target": "fixed_end", "delay": 20}
+    ]
+  }
+}

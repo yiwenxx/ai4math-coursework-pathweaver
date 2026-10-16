@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "task_id": "eda_assignment",
+  "instance_id": "eda_assignment_illustration_001",
+  "solution": {
+    "assignment": {
+      "ab": "s0",
+      "ac": "s1"
+    }
+  },
+  "expected_objectives": [
+    5,
+    8
+  ],
+  "provenance": "hand_authored_illustration_not_program_verified"
+}
