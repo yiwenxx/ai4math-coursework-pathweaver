@@ -4,6 +4,8 @@
 
 - Record one successful end-to-end AES comparison through the public entrypoint,
   including exact objectives, capacity checks and runtime counts. No solver code changed.
+- Record one successful Ibex comparison through the same entrypoint and budget,
+  distinguishing 1592 assigned data-graph edges from 1599 physical HBTs. No code changed.
 
 ## 0.1.0.dev1 — 2026-10-16
 
