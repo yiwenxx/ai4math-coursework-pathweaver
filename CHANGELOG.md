@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Record one successful end-to-end AES comparison through the public entrypoint,
+  including exact objectives, capacity checks and runtime counts. No solver code changed.
+
 ## 0.1.0.dev1 — 2026-10-16
 
 - Publish the runnable EDA TaskPack with strict JSON formats, global capacity checks,
