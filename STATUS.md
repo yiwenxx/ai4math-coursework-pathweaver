@@ -1,6 +1,6 @@
 # Current status
 
-Updated: 2026-10-16 · Public development version: `0.1.0.dev1`
+Updated: 2026-11-02 · Public development version: `0.1.0.dev1`
 
 | Capability | State |
 |---|---|
@@ -13,8 +13,21 @@ Updated: 2026-10-16 · Public development version: `0.1.0.dev1`
 | Public DEF/LEF/Liberty import and source geometry audit | Implemented; AES and Ibex observations available |
 | Bookshelf subset import and geometry audit | Available as a Python adapter; separate single-edge proxy |
 | Public comparison script | One end-to-end run each on existing AES and Ibex files passed; one call per strategy per case |
-| Other TaskPacks and autonomous algorithm discovery | Planned |
+| JSP-000158 research note and finite coloring artifacts | Published as a candidate proof; correctness and novelty remain unconfirmed; finite tables previously checked |
+| Other public TaskPacks and autonomous algorithm discovery | Planned |
 | Execution isolation and API budget enforcement | Planned |
+
+On 2026-11-02, the public repository adds [JSP-000158 research note v0.1.0](research/jsp158/README.md).
+It includes a complete AI-assisted proof draft, explicit literature attribution, five finite
+coloring arrays and the known modulo-22 ABBA template. These finite constructions have prior
+exhaustive verification records. The new standalone recomputation script is compile-checked;
+no solver, model call or successful finite verification is repeated for this publication.
+The note does not certify novelty or improve the known leading exponent 1/4.
+The research-note version is separate from the unchanged software package version.
+
+Publication validation on 2026-11-02: one `python -m compileall -q src scripts`
+and one offline `python -m pip wheel . --no-deps --no-build-isolation --no-index --wheel-dir dist`
+completed successfully. No new test suite or repeated mathematical verification was run.
 
 Recorded checks before this publication:
 

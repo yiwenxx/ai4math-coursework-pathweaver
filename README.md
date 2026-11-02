@@ -2,7 +2,7 @@
 
 **面向可验证组合优化的研究原型：首个可运行 EDA 路径耦合分配 TaskPack。**
 
-[当前状态](STATUS.md) · [任务格式](docs/eda_assignment.md) · [公开案例与复现](docs/eda_public_cases.md) · [结果摘要](results/README.md) · [泛化边界](docs/generalization.md) · [来源](docs/upstream.md)
+[JSP-000158 研究稿 v0.1](research/jsp158/README.md) · [当前状态](STATUS.md) · [任务格式](docs/eda_assignment.md) · [公开案例与复现](docs/eda_public_cases.md) · [结果摘要](results/README.md) · [泛化边界](docs/generalization.md) · [来源](docs/upstream.md)
 
 给定一个具有固定坐标的 DAG，把每条跨层边分配到一个合法 HB 站点，每个站点
 全局容量为一。按精确字典序最小化 `(T,L)`：先降低完整 DAG 的最长路径代价，
@@ -11,6 +11,13 @@ T 相同时再降低跨层总几何线长。独立评估器重新计算约束与
 当前提供实例生成、JSON 格式、独立验证、两种求解策略、三个手工样例，以及
 Open3DBench AES / Ibex 的公开案例比较入口。完整自主算法发现循环、执行隔离和
 其他数学任务仍在开发中。
+
+## 四项等差数列染色研究稿
+
+新增 [JSP-000158 / Erdős 160 研究稿 v0.1.0](research/jsp158/README.md)：
+公开常数标签进位控制与明确次主项上界的候选证明、五个有限区间构造及重算脚本。
+候选结果保持已知的 1/4 主指数，正确性和创新性仍待独立确认，不宣称解决原题。
+研究稿独立于当前 EDA 软件接口；没有在公共包中声称提供完整研究运行器。
 
 ## 快速开始
 

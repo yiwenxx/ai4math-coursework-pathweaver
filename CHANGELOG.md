@@ -1,5 +1,15 @@
 # Changelog
 
+## JSP-000158 research note 0.1.0 — 2026-11-02
+
+- Publish the complete candidate proof for constant-label carry control and an explicit
+  subexponential factor in the four-term AP coloring upper bound, with literature comparison.
+- Include five previously verified finite colorings, the attributed known modulo-22 template,
+  and a standard-library recomputation script.
+- Mark correctness and novelty as pending independent confirmation; do not claim a new record,
+  a leading-exponent improvement, or a solution of Erdős problem 160.
+- Keep the research-note release separate from software version 0.1.0.dev1.
+
 ## Unreleased
 
 - Record one successful end-to-end AES comparison through the public entrypoint,
