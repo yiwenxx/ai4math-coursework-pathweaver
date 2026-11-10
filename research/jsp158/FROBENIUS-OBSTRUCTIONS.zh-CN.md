@@ -4,7 +4,7 @@
 
 本稿整理有完整文字推导的双系数及多项线性化测量障碍。AI 助手已逐步复核推导和所用原始文献的适用条件；尚无外部专家或形式化认证，优先权未确认。它们没有给出任何染色都满足的下界，也没有构造出小于 1/4 的主指数。JSP-000158 对应 Erdős 问题 **160**。
 
-The note gives proof drafts of obstructions for specified cubic-norm coloring families. For arbitrary Frobenius and linear measurement coefficients, avoiding ABBA forces prime-field quadratic structure and base dimension at most two. A sufficiently large fixed field rules out every positive base dimension. A further single-term result applies when the Frobenius exponent is below half the extension degree. An extension treats additive measurement maps varying in a space of sufficiently high minimum rank. These are restricted-family statements, not a solution of Erdős problem 160 or an established novelty claim.
+The note gives proof drafts of obstructions for specified cubic-norm coloring families. For arbitrary Frobenius and linear measurement coefficients, avoiding ABBA forces prime-field quadratic structure and base dimension at most two. A sufficiently large fixed field rules out every positive base dimension. For arbitrary additive measurement spaces, a rank-free dimension obstruction follows from classical exponential-sum estimates. For linearized polynomials of degree at most p^h with e>=2h+1, every positive base dimension is excluded. These are restricted-family statements, not a solution of Erdős problem 160 or an established novelty claim.
 
 ## 1. 对象与结论
 
@@ -42,7 +42,7 @@ $$
 
 **命题 C（单项 Frobenius 的另一范围）。** 在 M=0 时，若 e≥2j+1，则同样对所有 d≥1 成立逐基底 AP、逐外色的 ABBA 障碍。它不要求命题 B 的大不动子域条件。
 
-命题 A–C 对任意所选基、任意 L 和独立 π_x 都有效。第8节的命题 D 另处理满足最小秩条件的多项线性化测量空间；任意的 π_(x,z)和不满足该条件的一般多项组合仍未全面处理。
+命题 A–C 对任意所选基、任意 L 和独立 π_x 都有效。第8节的命题 D 对任意加法算子变化空间给出无秩限制的维数障碍；第9节的命题 E 在 e≥2h+1 时排除次数≤p^h 的多项线性化测量族的全部正基底维数。一般 π_(x,z)及未满足这些条件的低维组合仍未全面处理。
 
 ## 2. 普通二元范数曲线
 
@@ -210,7 +210,13 @@ $$
 
 ## 7. 命题 C：另一条曲线估计
 
-令 σ=p^j，q≥pσ²≥5σ²。对 k≠0、n任意，曲线 H(a,c)+kc^σ=n 上 J≠0 的解数至少
+令 σ=p^j，q≥pσ²≥5σ²。下列引理允许全部较低 Frobenius 项：对
+
+$$
+D(c)=\sum_{i=0}^j k_i c^{p^i},\qquad k_j\ne0,
+$$
+
+以及任意 n，曲线 H(a,c)+D(c)=n 上 J≠0 的解数至少
 
 $$
 q-2(\sigma-1)\sqrt q-2\sigma>0. \tag{8}
@@ -219,13 +225,13 @@ $$
 证明要点完整列出如下。除以 N(e_s)后，关于 a 的首一三次式形如
 
 $$
-a^3+u ca^2+v c^2a+w c^3+\kappa c^\sigma-\eta=0,
-\qquad\kappa\ne0.
+a^3+u ca^2+v c^2a+w c^3+\sum_{i=0}^j\kappa_i c^{p^i}-\eta=0,
+\qquad\kappa_j\ne0.
 $$
 
-若在 Ω(c)[a]可约，其根由整闭性是多项式 P(c)。若 deg P=r>1，唯一最高范数项次数为3r，必须与 σ 相等；3不整除σ，不可能。若 deg P≤1，不能消掉 σ≥5 次项。因此曲线几何整，覆盖 c 直线的次数为3且可分。
+若在 Ω(c)[a]可约，其根由整闭性是多项式 P(c)。若 deg P=r>1，唯一最高范数项次数为3r，必须与 σ 相等；3不整除σ，不可能。若 deg P≤1，不能消掉 σ≥5 次项。所有较低 Frobenius 项次数都小于σ，不影响这个比较。因此曲线几何整，覆盖 c 直线的次数为3且可分。
 
-其关于 a 的多项式判别式次数恰2σ，首系数−27κ²≠0。正规化的有限判别式整除该整阶的判别式，指数理想的平方只增加后者，因此有限不同除子次数≤2σ；不能直接将两者认作相等。
+其关于 a 的多项式判别式次数恰2σ，首系数−27κ_j²≠0。其余含D的项次数至多σ+3，纯范数项至多6，均小于2σ。正规化的有限判别式整除该整阶的判别式，指数理想的平方只增加后者，因此有限不同除子次数≤2σ；不能直接将两者认作相等。
 
 在任何无穷远点，设 c 的极点阶 r≤3。a 的极点阶 s 必大于 r，否则 c^σ 项无法消去；于是 3s=σr，迫 r=3、s=σ。这用尽覆盖次数，故只有一个无穷远点，温和分歧，不同指数2。Riemann–Hurwitz 给正规化亏格≤σ−1。
 
@@ -238,72 +244,129 @@ $$
 
 得到，其中左式作为 √q 的函数在 √q≥√5σ 上递增。
 
-在 M=0 的情况下，命题 B 的证明只需将引理2替换成 (8)，其余非零三阶系数与仿射分支保持有效。因此命题 C 成立。它的单项条件 M=0 必须保留在本稿陈述中。
+在 M=0 的情况下，命题 B 的证明只需将引理2替换成 (8) 的单项特例，其余非零三阶系数与仿射分支保持有效。因此命题 C 成立。较低项同时存在的应用见第9节。
 
-## 8. 多项线性化测量的扩展
+## 8. 任意加法测量空间的维数障碍
 
-令 W⊆End_(F_p)(F_q)为 F_p 线性空间，T_*为固定加法映射，T_x任意取值于 T_*+W。将 (1) 改为
+令 W⊆End_(F_p)(F_q)为任意 F_p 线性空间，T_*为固定加法映射，T_x任意取值于 T_*+W。将 (1) 改为
 
 $$
 C(x,y,z)=\pi_x\bigl(y+N(z)+T_x(Q_x(z))\bigr). \tag{9}
 $$
 
-**命题 D。** 仍设 p≥5、e≥2。
-
-1. 若 W 的每个非零成员可逆，则 (9) 无 ABBA 迫 ed≤2dim_(F_p)W≤2e，故 d≤2。
-2. 若 q≡1(mod3)，且 W 的每个非零成员的 F_p 秩严格大于 e/2，则 (9) 无 ABBA 迫 ed≤2dim_(F_p)W。这个情形允许奇异成员，不能再自动推出 dimW≤e。
-
-先证明第二种情形。对任意 F_p 子空间 U⊆F_q、dimU>e/2，每个仿射陪集 n−U 都与任意 λ(F_q^*)³相交。取三次乘法特征 χ（χ(0)=0）和非平凡加法特征 ψ。正交展开中平凡频率为零，其余高斯和模长为√q，故
+**命题 D。** 设 r=dim_(F_p)W。若 (9) 无非平凡 ABBA，则 T_x−T_*在 ed 个素域坐标下总次数≤2，其 W 值二次齐次部分 B 仅在零向量取零，且
 
 $$
-\left|\sum_{z\in n-U}\chi(z)\right|
-\le (1-|U|/q)\sqrt q.
+ed\le2r. \tag{10}
 $$
 
-此处高斯和的模长由正交性直接得到：|G(χ)|²=(q−1)−Σ_(t≠0,1)χ(t)=q。用立方陪集的特征指标并排除0，交的大小至少为
+这里不要求 W 的非零成员可逆或高秩，也没有 q 模3的限制。它是整个族的必要条件，不声称每条基底 AP 都有见证。
+
+**引理 3（加法像补偿）。** 任意非零 F_p 线性映射 A、任意 F_p 线性映射 D 以及 n∈F_q，都存在 a,c,w，使
 
 $$
-(|U|-1-2\sqrt q)/3>0.
+H(a,c)+D(c)+A(w)=n,\qquad J(a,c)\ne0. \tag{11}
 $$
 
-最后的正性来自整数维数给 |U|≥√p√q≥√5√q，且 q≥25。仿射子空间特征和的平方根界是经典工具，可对照 [Reis Lemma2.5](https://arxiv.org/html/2007.04859)。
+证明：置 U=imA、u=|U|≥p≥5。固定标准非平凡加法特征 ψ。迹配对非退化，给出伴随 D*，满足 ψ(tD(c))=ψ(D*(t)c)。这只是在特征内把相位降为线性，不把 D 本身当作 F_q 线性映射。
 
-固定基底 AP，将四个映射插值为 T_i=Σ_(j=0)^3 i^jA_j，其中 A₁,A₂,A₃∈W，A₀可以包含 T_*。若 A₃≠0，令 U=imA₃、λ=N(e_s)，由陪集结论选 a≠0、w_0，使 λa³+A₃(w_0)=n。取 z_i=(s_0+ia)e_s+w_0e_w，则
+H 的三个几何线性因子互异，所以它在 P¹ 上的零集光滑。对每个 t≠0，tH+D*(t)c 的最高齐次部仍是光滑三次式。由 [Deligne Théorème8.4，印刷页302–303](https://www.numdam.org/item/PMIHES_1974__43__273_0.pdf)，因 p≥5，
 
 $$
-\Delta^3F/6=\lambda a^3+A_3(w_0),\qquad
-\Delta^2F=6\lambda a^2s_0+\text{与 }s_0\text{ 无关的项}.
+\left|\sum_{a,c\in F_q}\psi(tH(a,c)+D^*(t)c)\right|\le4q.
 $$
 
-因此能匹配任意四个目标。无 ABBA 迫所有 A₃=0；对 W 的各素域坐标应用第4节的论证，T_x−T_*是总次数≤2的 W 值函数，记二次部为 B。
+设 R 为满足 H+D(c)∈n−U 的点数。|U^⊥|=q/u，正交展开给
 
-若 B(v)=0且v≠0，则沿该方向 T_i=A₀+iA₁。取 z_i=s_0e_s+i(ae_s+ce_w)，加法性给 T_i(ic)=iA₀(c)+i²A₁(c)，故
+$$
+R=\frac uq\sum_{t\in U^\perp}\psi(-tn)
+  \sum_{a,c}\psi(tH(a,c)+D^*(t)c)
+\ge qu-4(q-u). \tag{12}
+$$
+
+现在扣除 J=0 的合格点。J 为齐次二次式，a²系数3N(e_s)≠0。其有理零集或者只有原点，或者包含于至多两条 a=ρc 的直线；没有 c=0 的整条分支。每条线上 H=κc³，κ=H(ρ,1)≠0，因为范数各向异性。一元三次 Weil 界为2√q，使用同一正交展开，每条线上满足陪集条件的点数至多
+
+$$
+u+\frac{2(q-u)}{\sqrt q}.
+$$
+
+仅有原点的情形也受这个上界控制；两条线重计原点只会多扣。因此 J≠0 的合格点数至少
+
+$$
+q(u-4)+2u-\frac{4(q-u)}{\sqrt q}
+\ge q+10-4\sqrt q=(\sqrt q-2)^2+6>0. \tag{13}
+$$
+
+由 U=imA 再选择 w，得到 (11)。A≠0 不能删除：A=D=0、n=0 时，H=0迫 a=c=0，因而 J=0。证毕。
+
+固定基底 AP，将四个映射插值为 T_i=Σ_(j=0)^3 i^jA_j。非恒定插值权重和为零，故 A₁,A₂,A₃∈W，A₀可包含 T_*。取
+
+$$
+z_i=s_0e_s+w_0e_w+i(ae_s+ce_w),\qquad
+F_i=N(z_i)+T_i(w_0+ic).
+$$
+
+F_p 线性性以及 Δ³i⁴=36 给出真实差分
+
+$$
+\frac{\Delta^3F}{6}=H+A_3(w_0)+(A_2+6A_3)(c), \tag{14}
+$$
+
+$$
+\begin{aligned}
+\Delta^2F={}&2s_0J+2w_0H_c+6H
+ +2[A_2(w_0)+A_1(c)]\\
+ &+6[A_3(w_0)+A_2(c)]+14A_3(c).
+\end{aligned} \tag{15}
+$$
+
+若 A₃≠0，应用引理3于 A=A₃、D=A₂+6A₃，匹配任意第三差分；再调 s_0 匹配第二差分，最后取 y_i=u_i−F_i。所以任意四个目标都可实现。无 ABBA 迫所有基底 AP 上 A₃=0。
+
+对 W 的各素域坐标应用第4节的约化多项式证明，T_x−T_*是总次数≤2的 W 值函数。记二次部为 B。若 B(v)=0且v≠0，则沿该方向 T_i=A₀+iA₁。取 w_0=0，(14)–(15)化为
 
 $$
 \Delta^3F=6H,\qquad
 \Delta^2F=2s_0J+6H+2A_1(c).
 $$
 
-n≠0时用引理1的 H=n；固定外色后所有内色均给 n=0 时，用第4节的仿射退化分支。两种情形都产生 ABBA，所以 B 只能在零向量取零。B=0 是 ed 个素域变量上的 dimW 个齐次二次方程，Chevalley–Warning给 ed≤2dimW。
+n≠0时用引理1的 H=n；固定外色后所有内色均给 n=0 时，用第4节的退化目标分支，直接令 z_i=0。都得到 ABBA，所以 B 只能在零向量取零。B=0 是 ed 个素域变量上的 r 个齐次二次方程，Chevalley–Warning 给 ed≤2r。命题 D 得证。
 
-对于第一种情形，无需立方特征或 q≡1：当 A₃≠0 时直接取 a=1，由 A₃可逆解 λ+A₃(w_0)=n，其余证明相同。再固定 c≠0，评价 W→F_q、A↦A(c)是单射，故 dimW≤e。命题 D 得证。结论是整族中存在 ABBA，并不声称每条基底 AP 都有见证。
+例如 q=343、W={u↦bTr_(343/7)(u):b∈F343}，维数 r=3，全部非零成员的秩仅1；(10)仍排除所有 d≥3。若 W 的非零成员均可逆，固定 c≠0 的评价 A↦A(c)是单射，给 r≤e，于是恢复 d≤2。一般 W 不能这样界定维数；例如整个 End_(F_p)(F_q)有维数 e²，(10)只排除 d≥2e+1。
 
-一个明确的多项族是
+较早的高秩方法利用仿射子空间与立方陪集相交，其特征和工具可对照 [Reis Lemma2.5](https://arxiv.org/html/2007.04859)。引理3允许 c 变化，撤去了那种方法的秩限制。双系数命题 A 的 d≤2 仍比直接取 r=2e 代入 (10)更强。
+
+## 9. 低次数多项 Frobenius 的全部正维数障碍
+
+**命题 E。** 在相同的 p、q、K、Q_x、π_x 条件下，设 h≥2、e≥2h+1，固定任意 F_p 线性 T_*，并令
 
 $$
-W_t=\left\{u\longmapsto\sum_{j=0}^t b_j u^{p^j}:b_j\in F_q\right\},
-\qquad t\ge2,\quad e\ge2t+1,\quad q\equiv1\pmod3.
+T_x(u)=T_*(u)+\sum_{j=0}^{h}b_j(x)u^{p^j},
 $$
 
-系数表示单射，因为非零多项式次数≤p^t<q，不能为零函数。因此 dim_(F_p)W_t=e(t+1)。非零成员的核至多 p^t 个元素，秩≥e−t>e/2。命题 D 得无 ABBA⇒d≤2t+2；故任意独立系数 b_0(x),…,b_t(x)、任意固定 T_*下，所有 d≥2t+3 被排除。例如 q=7^5、t=2、d≥7；空间含有奇异成员 u⁷−u。
+其中全部 b_j、L 都任意。则 (9) 沿每条非恒定基底 AP、每个指定外色都有 ABBA，对所有 d≥1 成立，无 q 模3限制。
 
-W_t 的构造、维数和秩界属于经典 Delsarte–Gabidulin 型空间，可直接对照 [Sheekey §2](https://arxiv.org/pdf/1504.01581)。它们不是本稿的新代码构造；这里的贡献候选只是这类空间经差分匹配与二次刚性产生的着色障碍。三项例的 d≤6 没有被该命题排除。
+证明：沿给定基底 AP 插值 T_i=A₀+iA₁+i²A₂+i³A₃。A₁,A₂,A₃都是次数≤p^h 的线性化多项式；固定 T_*已在非恒定系数中抵消。
 
-## 9. q=121：方法反例与正向诊断的区别
+若 A₃≠0，第8节的引理3及 (14)–(15)实现任意四色。若 A₃=0，取 w_0=0，则
+
+$$
+\Delta^3F/6=H+A_2(c),\qquad
+\Delta^2F=2s_0J+6(H+A_2(c))+2A_1(c). \tag{16}
+$$
+
+若 A₂ 有非恒等 Frobenius 项，令其中最高指数为 σ=p^j，1≤j≤h。q≥5σ²，第7节的多项曲线引理给 H+A₂(c)=n、J≠0的解。先匹配第三差分，再调 s_0 匹配第二差分。
+
+若 A₂ 只是标量映射 ℓc，只要 (ℓ,n)≠(0,0)，改用引理1。余下 ℓ=0 的情形：若某内色给 n≠0，已覆盖；若每个内色均给 n=0，用 π_(x_1) 的双射性选 u₁=(2u₀+u₃)/3，随即 u₂=(u₀+2u₃)/3，直接令 z_i=0、y_i=u_i。这样所有分支都有 ABBA，总向量公差因基底公差非零而非零。证毕。
+
+空间 W_h={Σ_(j=0)^h b_j u^(p^j)}具有 F_p 维数 e(h+1)：非零多项式次数≤p^h<q，故系数表示单射。其非零成员核维数≤h、秩≥e−h，这些是经典 Delsarte–Gabidulin 型空间的性质，见 [Sheekey §2](https://arxiv.org/pdf/1504.01581)，不认领为新代码构造。
+
+单独使用维数障碍 (10)只排除 d≥2h+3；命题 E 进一步覆盖全部 d≥1。例如 q=7^5、h=2 时，三个独立系数函数完全任意，d=1也被排除。临界 e=2h 不满足本节的点数条件；q121不因此关闭。
+
+## 10. q=121：方法反例与正向诊断的区别
 
 固定测量截距的一个较早步骤要求解 6a³+T(c)=0、a≠0。在 F_121 中取非立方 γ，令 T(c)=γ(c^11+c)。其像是 γF_11；F_11^* 的阶10整除 F_121^* 中立方子群的阶40，−6也是立方。因此该方程无 a≠0 解。
 
-这是该步骤的反例。它没有二元范数 H 的完整 c³项，也没有使用第3节的移动截距，不能据此制造合法染色或否定本稿命题。
+这是该步骤的反例。它没有二元范数 H 的完整 c³项，也没有使用第3节的移动截距或引理3允许c变化的机制，不能据此制造合法染色或否定本稿命题。引理3要求非零A；下面的剩余混合曲线没有该自由补偿项。
 
 q=121 的剩余混合曲线问题是：对所有独立 e_s,e_w、k≠0、ℓ,n，是否总存在 H+kc^11+ℓc=n、J≠0？一次完整候选诊断返回了正向结果：
 
@@ -320,12 +383,12 @@ q=121 的剩余混合曲线问题是：对所有独立 e_s,e_w、k≠0、ℓ,n�
 
 归约与生成器的静态审查未发现错误，但结果仍只有候选诊断证据，没有独立可信核验或可核查证书。**本稿不据此宣布 q=121 的 d=1、2 分支已关闭。** 既有 [有限数组重算脚本](../../scripts/verify_jsp158_artifacts.py)只验证原有区间和模22数据，不认证这项诊断或本稿一般定理；本次同步没有重跑旧核验。
 
-## 10. 归属、边界与下一步
+## 11. 归属、边界与下一步
 
-范数各向异性、AP最高项和已知 1/4 主指数来自既有工作，特别是 [Shi–Dong §§3–5](https://arxiv.org/html/2607.20752v2)。素域逐线次数的约化单项式论证与 [Guo–Kopparty–Sudan 的提升代码研究](https://people.csail.mit.edu/madhu/papers/2012/lifts-conf.pdf)相关；本文给出了所需特殊情形的直接证明，不声称该工具新颖。Hasse–Weil、Bézout、整闭性、Weil限制、Chevalley–Warning和显式点数界均属经典输入。
+范数各向异性、AP最高项和已知 1/4 主指数来自既有工作，特别是 [Shi–Dong §§3–5](https://arxiv.org/html/2607.20752v2)。素域逐线次数的约化单项式论证与 [Guo–Kopparty–Sudan 的提升代码研究](https://people.csail.mit.edu/madhu/papers/2012/lifts-conf.pdf)相关；本文给出了所需特殊情形的直接证明，不声称该工具新颖。Hasse–Weil、Deligne指数和界、Bézout、整闭性、Weil限制、Chevalley–Warning和显式点数界均属经典输入。
 
-目前值得继续核对的具体贡献候选是：任意双系数下的截距消去、必要二次结构与维数界，带线性项的循环范数系统几何整性，以及高秩加法变化空间的ABBA应用。针对精确族名、Frobenius、norm、linearized、rank-metric、symmetrically colored、ABBA等词组的检索没有确认精确先例，但有限检索不足以确定优先权。详见 [审阅记录](REVIEW.md)及 [参考文献](references.bib)。
+目前值得继续核对的具体贡献候选是：任意双系数下的截距消去、必要二次结构与维数界，带线性项的循环范数系统几何整性，任意加法变化空间经经典指数和得到的ABBA维数障碍，以及低次数多项线性化扰动的全部正维数应用。针对精确族名、Frobenius、norm、linearized、rank-metric、symmetrically colored、ABBA等词组的检索没有确认精确先例，但有限检索不足以确定优先权。详见 [审阅记录](REVIEW.md)及 [参考文献](references.bib)。
 
-仍需研究的小域部分包括 q121 中 d≤2、两系数为素域二次且 β₂ 各向异性的候选结构，以及其他未满足点数条件的域。多个非恒等 Frobenius项须扣除命题 D 的高秩空间范围；其余低维、低秩组合及一般 π_(x,z)和其他机制未被全面约束。任何未来正向构造还须处理原题所有少色模式及整数/循环提升；有限域向量 AP 的结论不能直接替代这些步骤。
+仍需研究的小域部分包括 q121 中 d≤2、两系数为素域二次且 β₂ 各向异性的候选结构，以及其他未满足点数条件的域。多个非恒等 Frobenius项须先扣除命题 D 的任意变化空间维数障碍和命题 E 的 e≥2h+1 全部正维数范围；剩余低维、临界指数组合及一般 π_(x,z)和其他机制未被全面约束。任何未来正向构造还须处理原题所有少色模式及整数/循环提升；有限域向量 AP 的结论不能直接替代这些步骤。
 
 本文和 [2026-11-02 的定量细化稿](NOTE.zh-CN.md)是不同方向的研究记录。旧稿保留 1/4 主指数，本稿提供受限族障碍；均未解决原题。

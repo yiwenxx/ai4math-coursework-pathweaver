@@ -7,8 +7,11 @@
   large-fixed-field obstruction, and the separate single-Frobenius curve bound.
 - State every parameter restriction, the moving-intercept argument, degenerate
   ABBA matching and original literature attribution explicitly.
-- Include the dimension obstruction for additive measurement spaces of high
-  minimum rank, with the underlying Delsarte--Gabidulin spaces attributed.
+- Include the rank-free dimension obstruction for arbitrary additive measurement
+  spaces, with the Deligne estimate and its derivative-zero correction explicit.
+- Exclude every positive base dimension for arbitrary linearized coefficients
+  of degree at most p^h when h>=2 and e>=2h+1; attribute the underlying classical
+  Delsarte--Gabidulin spaces and function-field tools.
 - Record q=121 value-set coverage as an untrusted diagnostic, with no independent
   certificate or claim that its remaining cases are solved.
 - Preserve the previous quantitative-refinement note and finite artifacts.

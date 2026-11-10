@@ -23,8 +23,11 @@ Frobenius and linear measurement coefficients. Avoiding ABBA forces prime-field
 quadratic coefficients and base dimension at most two. A sufficiently large fixed
 field excludes every positive base dimension; a separate single-term result applies
 when e>=2j+1. Exact hypotheses, degenerate cases and primary sources are in the note.
-An extension gives ed<=2dim(W) for additive measurement maps varying in a space
-with sufficiently high minimum rank, including specified independent multi-term families.
+An extension gives ed<=2dim(W) for arbitrary additive measurement spaces,
+without a minimum-rank assumption or restriction on q modulo 3. Classical
+exponential-sum estimates supply the missing low-rank case. For arbitrary
+linearized coefficients of degree at most p^h, h>=2 and e>=2h+1, every positive
+base dimension is excluded, including q=7^5 with three independent terms.
 These statements have received direct AI-assisted mathematical review, without
 external expert or formal certification. They are not arbitrary-coloring lower bounds
 and do not improve the leading exponent below 1/4; priority remains unconfirmed.
