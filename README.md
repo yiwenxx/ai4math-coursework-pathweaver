@@ -2,7 +2,7 @@
 
 **面向可验证组合优化的研究原型：首个可运行 EDA 路径耦合分配 TaskPack。**
 
-[JSP-000158 研究稿 v0.1](research/jsp158/README.md) · [当前状态](STATUS.md) · [任务格式](docs/eda_assignment.md) · [公开案例与复现](docs/eda_public_cases.md) · [结果摘要](results/README.md) · [泛化边界](docs/generalization.md) · [来源](docs/upstream.md)
+[JSP-000158 研究进展](research/jsp158/README.md) · [当前状态](STATUS.md) · [任务格式](docs/eda_assignment.md) · [公开案例与复现](docs/eda_public_cases.md) · [结果摘要](results/README.md) · [泛化边界](docs/generalization.md) · [来源](docs/upstream.md)
 
 给定一个具有固定坐标的 DAG，把每条跨层边分配到一个合法 HB 站点，每个站点
 全局容量为一。按精确字典序最小化 `(T,L)`：先降低完整 DAG 的最长路径代价，
@@ -14,10 +14,15 @@ Open3DBench AES / Ibex 的公开案例比较入口。完整自主算法发现循
 
 ## 四项等差数列染色研究稿
 
-新增 [JSP-000158 / Erdős 160 研究稿 v0.1.0](research/jsp158/README.md)：
-公开常数标签进位控制与明确次主项上界的候选证明、五个有限区间构造及重算脚本。
-候选结果保持已知的 1/4 主指数，正确性和创新性仍待独立确认，不宣称解决原题。
-研究稿独立于当前 EDA 软件接口；没有在公共包中声称提供完整研究运行器。
+2026-11-11 新增 [Frobenius 测量扰动的统一障碍稿](research/jsp158/FROBENIUS-OBSTRUCTIONS.zh-CN.md)：
+在明确的三次范数构造族中，避开 ABBA 迫使任意双系数具有素域二次结构、基底维数至多为2；
+不动子域足够大时，所有正基底维数均被排除。正文给出完整推导、原文归属和准确参数范围。
+另给最小秩受限的多项加法测量空间的维数障碍，包含三个及更多独立Frobenius系数的部分范围。
+q=121 的正向有限诊断仍无可信独立证书，不能据此宣布其维数1、2情形已关闭。
+
+[原 v0.1.0 定量细化稿](research/jsp158/NOTE.zh-CN.md)、五个有限区间构造及重算脚本继续保留。
+这些研究没有取得小于 1/4 的主指数，也不是任意染色下界；外部正确性确认和优先权仍待完成。
+详见 [研究索引与证据状态](research/jsp158/README.md)。研究稿独立于当前 EDA 软件接口。
 
 ## 快速开始
 

@@ -1,6 +1,6 @@
 # Current status
 
-Updated: 2026-11-02 · Public development version: `0.1.0.dev1`
+Updated: 2026-11-11 · Public development version: `0.1.0.dev1`
 
 | Capability | State |
 |---|---|
@@ -13,11 +13,29 @@ Updated: 2026-11-02 · Public development version: `0.1.0.dev1`
 | Public DEF/LEF/Liberty import and source geometry audit | Implemented; AES and Ibex observations available |
 | Bookshelf subset import and geometry audit | Available as a Python adapter; separate single-edge proxy |
 | Public comparison script | One end-to-end run each on existing AES and Ibex files passed; one call per strategy per case |
-| JSP-000158 research note and finite coloring artifacts | Published as a candidate proof; correctness and novelty remain unconfirmed; finite tables previously checked |
+| JSP-000158 research notes and finite coloring artifacts | Complete proof drafts for quantitative refinement and restricted Frobenius-family obstructions; external correctness and novelty unconfirmed; original finite tables previously checked |
 | Other public TaskPacks and autonomous algorithm discovery | Planned |
 | Execution isolation and API budget enforcement | Planned |
 
-On 2026-11-02, the public repository adds [JSP-000158 research note v0.1.0](research/jsp158/README.md).
+On 2026-11-11, the [Frobenius obstruction note](research/jsp158/FROBENIUS-OBSTRUCTIONS.zh-CN.md)
+adds full proofs for a precisely defined cubic-norm coloring family with arbitrary
+Frobenius and linear measurement coefficients. Avoiding ABBA forces prime-field
+quadratic coefficients and base dimension at most two. A sufficiently large fixed
+field excludes every positive base dimension; a separate single-term result applies
+when e>=2j+1. Exact hypotheses, degenerate cases and primary sources are in the note.
+An extension gives ed<=2dim(W) for additive measurement maps varying in a space
+with sufficiently high minimum rank, including specified independent multi-term families.
+These statements have received direct AI-assisted mathematical review, without
+external expert or formal certification. They are not arbitrary-coloring lower bounds
+and do not improve the leading exponent below 1/4; priority remains unconfirmed.
+
+The q=121 candidate diagnostic reported full value-set coverage for 40,656 normalized
+parameter groups. It has no trusted independent verification or certificate and does
+not establish the remaining d=1 or d=2 cases. This update changes documentation only;
+software sources, finite arrays and their verifier are unchanged. No additional local
+compilation, build, model request or mathematical rerun was needed for publication.
+
+On 2026-11-02, the public repository added [JSP-000158 research note v0.1.0](research/jsp158/NOTE.zh-CN.md).
 It includes a complete AI-assisted proof draft, explicit literature attribution, five finite
 coloring arrays and the known modulo-22 ABBA template. These finite constructions have prior
 exhaustive verification records. The new standalone recomputation script is compile-checked;

@@ -1,5 +1,20 @@
 # Changelog
 
+## JSP-000158 research update — 2026-11-11
+
+- Publish full proof drafts for arbitrary mixed Frobenius/linear coefficients:
+  the necessary prime-field quadratic structure and base-dimension bound, the
+  large-fixed-field obstruction, and the separate single-Frobenius curve bound.
+- State every parameter restriction, the moving-intercept argument, degenerate
+  ABBA matching and original literature attribution explicitly.
+- Include the dimension obstruction for additive measurement spaces of high
+  minimum rank, with the underlying Delsarte--Gabidulin spaces attributed.
+- Record q=121 value-set coverage as an untrusted diagnostic, with no independent
+  certificate or claim that its remaining cases are solved.
+- Preserve the previous quantitative-refinement note and finite artifacts.
+  No exponent breakthrough, external certification or priority claim; software
+  remains 0.1.0.dev1 with no source changes or repeated local mathematical checks.
+
 ## JSP-000158 research note 0.1.0 — 2026-11-02
 
 - Publish the complete candidate proof for constant-label carry control and an explicit
