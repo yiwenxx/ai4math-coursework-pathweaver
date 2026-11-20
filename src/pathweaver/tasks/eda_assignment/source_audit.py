@@ -7,6 +7,8 @@ or candidate-reported metrics. Source records come from the admitted importer.
 from collections import Counter, defaultdict, deque
 from collections.abc import Mapping
 
+from .model import rectangle_overlaps
+
 
 def audit_coupled_assignment(bundle: Mapping, solution: Mapping) -> dict:
     source = bundle["source_graph"]
@@ -32,7 +34,7 @@ def audit_coupled_assignment(bundle: Mapping, solution: Mapping) -> dict:
         if (edge in selected and site not in candidates) or (
             edge not in selected and site != original[edge]
         ):
-            raise ValueError("source audit: eligibility or fixed HBT violation")
+            raise ValueError("source audit: eligibility or frozen HBT violation")
         occupied.add(site)
 
     pins, sites = source["pins"], source["sites"]
@@ -101,17 +103,12 @@ def audit_coupled_assignment(bundle: Mapping, solution: Mapping) -> dict:
         xs, ys = zip(*points)
         hpwl += max(xs) - min(xs) + max(ys) - min(ys)
 
-    # Doubled coordinates avoid rounding when a rectangle has odd dimensions.
     rectangles = []
     for name, (x, y) in positions.items():
         width, height = sites[name]["width"], sites[name]["height"]
-        rectangles.append((2 * x - width, 2 * y - height,
-                           2 * x + width, 2 * y + height))
-    active, overlaps = [], 0
-    for box in sorted(rectangles):
-        active = [other for other in active if other[2] > box[0]]
-        overlaps += sum(min(other[3], box[3]) > max(other[1], box[1]) for other in active)
-        active.append(box)
+        rectangles.append(((2 * x - width, 2 * y - height,
+                            2 * x + width, 2 * y + height), name))
+    overlaps = len(rectangle_overlaps(rectangles))
     return {
         "objectives": [max(arrival.values(), default=0), total_length],
         "total_split_hpwl": hpwl,

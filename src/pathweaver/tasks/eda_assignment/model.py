@@ -58,10 +58,13 @@ class Instance:
 
     @property
     def cross_edges(self) -> tuple[Edge, ...]:
-        return tuple(
-            edge for edge in self.edges
-            if self.nodes[edge.source].tier != self.nodes[edge.target].tier
-        )
+        return tuple(edge for edge in self.edges if edge.delay is None)
+
+    def outgoing(self) -> dict[str, list[Edge]]:
+        graph: dict[str, list[Edge]] = {node: [] for node in self.nodes}
+        for edge in self.edges:
+            graph[edge.source].append(edge)
+        return graph
 
 
 def _integer(value: Any, *, nonnegative: bool = False) -> bool:
@@ -231,26 +234,20 @@ def geometric_length(instance: Instance, edge: Edge, site_id: str) -> int:
     return abs(source.x - site.x) + abs(source.y - site.y) + abs(site.x - target.x) + abs(site.y - target.y)
 
 
-def find_matching(instance: Instance) -> dict[str, str] | None:
-    """Deterministic augmenting-path matching, including Hall-type conflicts.
-
-    The iterative search does not impose a Python recursion-depth limit on the
-    number of edges. It finds feasibility only; it does not optimize (T, L).
-    """
-    cross_edges = sorted(instance.cross_edges, key=lambda edge: (len(edge.eligible_sites), edge.id))
-    if len(cross_edges) > len(instance.sites):
-        return None
-    eligible = {edge.id: sorted(edge.eligible_sites) for edge in cross_edges}
+def augmenting_matching(
+    order: Sequence[str], preferences: Mapping[str, Sequence[str]]
+) -> tuple[dict[str, str], set[str], set[str]]:
+    """Iterative augmenting-path matching; returns (assignment, hall_edges, hall_sites)."""
     assignment: dict[str, str] = {}
     occupant: dict[str, str] = {}
-    for edge in cross_edges:
-        queue = deque([edge.id])
-        seen_edges = {edge.id}
+    for edge_id in order:
+        queue = deque([edge_id])
+        seen_edges = {edge_id}
         parent: dict[str, str] = {}
         free_site: str | None = None
         while queue and free_site is None:
             current = queue.popleft()
-            for site in eligible[current]:
+            for site in preferences[current]:
                 if site in parent:
                     continue
                 parent[site] = current
@@ -262,11 +259,36 @@ def find_matching(instance: Instance) -> dict[str, str] | None:
                     seen_edges.add(next_edge)
                     queue.append(next_edge)
         if free_site is None:
-            return None
+            return {}, seen_edges, set(parent)
         while free_site is not None:
             current = parent[free_site]
             previous_site = assignment.get(current)
             assignment[current] = free_site
             occupant[free_site] = current
             free_site = previous_site
-    return assignment
+    return assignment, set(), set()
+
+
+def find_matching(instance: Instance) -> dict[str, str] | None:
+    """Deterministic augmenting-path matching for feasibility verification."""
+    cross_edges = sorted(instance.cross_edges, key=lambda edge: (len(edge.eligible_sites), edge.id))
+    if not cross_edges:
+        return {}
+    if len(cross_edges) > len(instance.sites):
+        return None
+    preferences = {edge.id: sorted(edge.eligible_sites) for edge in cross_edges}
+    assignment, hall_edges, _ = augmenting_matching([edge.id for edge in cross_edges], preferences)
+    return None if hall_edges else assignment
+
+
+def rectangle_overlaps(rectangles: Sequence[tuple[Any, Any]]) -> list[list[str]]:
+    """Return positive-area overlapping [left, right] pairs via x-axis sweep."""
+    active: list[tuple[Any, str]] = []
+    overlaps: list[list[str]] = []
+    for box, name in sorted(rectangles):
+        active = [(other, other_name) for other, other_name in active if other[2] > box[0]]
+        for other, other_name in active:
+            if min(other[3], box[3]) > max(other[1], box[1]):
+                overlaps.append([other_name, name])
+        active.append((box, name))
+    return overlaps

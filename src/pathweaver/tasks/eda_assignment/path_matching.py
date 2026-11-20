@@ -9,7 +9,6 @@ from time import monotonic
 from typing import Any, Mapping
 
 from pathweaver.core.contracts import SolveBudget
-from .baseline import _validate_budget
 from .model import SCHEMA_VERSION, TASK_ID, geometric_length, parse_instance
 
 
@@ -25,6 +24,13 @@ def _check(deadline):
         raise _Deadline
 
 
+@dataclass(frozen=True)
+class _Matching:
+    columns: list[int]
+    row_potentials: list[int]
+    site_potentials: list[int]
+
+
 def _hungarian(costs, deadline):
     """Minimum-cost injection for a rectangular integer matrix (rows <= columns).
 
@@ -33,7 +39,7 @@ caller afterwards. Potentials and reduced costs use exact Python integers.
 """
     n = len(costs)
     if not n:
-        return []
+        return _Matching([], [], [])
     m = len(costs[0])
     if n > m:
         return None
@@ -74,7 +80,7 @@ caller afterwards. Potentials and reduced costs use exact Python integers.
     for column in range(1, m + 1):
         if owner[column]:
             answer[owner[column] - 1] = column - 1
-    return answer
+    return _Matching(answer, u[1:], v[1:])
 
 
 @dataclass
@@ -88,7 +94,7 @@ class _State:
 class _Graph:
     """Cache topology and geometric lengths; recompute every DAG path per score."""
 
-    def __init__(self, instance, deadline):
+    def __init__(self, instance):
         self.instance = instance
         self.edges = instance.edges
         index = {node: i for i, node in enumerate(instance.topological_order)}
@@ -99,7 +105,6 @@ class _Graph:
         for i, edge in enumerate(self.edges):
             self.outgoing[self.source[i]].append((i, self.target[i]))
             if edge.delay is None:
-                _check(deadline)
                 self.cross.append(i)
                 self.lengths[i] = {s: geometric_length(instance, edge, s) for s in edge.eligible_sites}
 
@@ -127,25 +132,18 @@ class _Graph:
 
 
 def solve(instance: Mapping[str, Any], budget: SolveBudget) -> Mapping[str, Any]:
-    """Solve from instance data only; parsing and all matching count toward time.
-
-Every full-DAG score, including the optional relaxed-bound pass, consumes one
-evaluation. With a one-evaluation budget, skip the bound and score one feasible
-minimum-length matching. An interrupted later matching preserves the incumbent.
-"""
-    if not isinstance(budget, SolveBudget):
-        raise ValueError("budget must be a SolveBudget")
-    _validate_budget(budget.seed, budget)
+    """Solve from instance data only; parsing and all matching count toward time."""
     started = monotonic()
     deadline = started + budget.wall_seconds
     evaluations, matchings = 0, 0
     best_assignment = best_state = bound = None
+    certificate = last_dual = None
     trace, seen = [], set()
     termination = "proposal_stagnation"
     try:
         parsed = parse_instance(instance)
         _check(deadline)
-        graph = _Graph(parsed, deadline)
+        graph = _Graph(parsed)
         # Singleton sites are globally reserved, including other tier pairs.
         forced = {graph.edges[i].id: graph.edges[i].eligible_sites[0]
                   for i in graph.cross if len(graph.edges[i].eligible_sites) == 1}
@@ -167,7 +165,7 @@ minimum-length matching. An interrupted later matching preserves the incumbent.
             return None
 
         def matching(caps=None, weights=None):
-            nonlocal matchings
+            nonlocal matchings, last_dual
             matrix_rows = []
             for row, i in enumerate(movable):
                 _check(deadline)
@@ -183,9 +181,11 @@ minimum-length matching. An interrupted later matching preserves the incumbent.
             matrix = [[row.get(j, forbidden) for j in range(len(sites))] for row in matrix_rows]
             result = _hungarian(matrix, deadline)
             matchings += 1
-            if result is None or any(j not in matrix_rows[row] for row, j in enumerate(result)):
+            if result is None or any(j not in matrix_rows[row] for row, j in enumerate(result.columns)):
                 return None
-            return {**forced, **{graph.edges[i].id: sites[result[row]] for row, i in enumerate(movable)}}
+            last_dual = result
+            return {**forced, **{graph.edges[i].id: sites[result.columns[row]]
+                                for row, i in enumerate(movable)}}
 
         def consider(assignment, phase):
             nonlocal evaluations, best_assignment, best_state
@@ -229,6 +229,14 @@ minimum-length matching. An interrupted later matching preserves the incumbent.
             # T=T_lb. Feasibility at T_lb closes that search; no extra scores.
             # Independent verification still assigns its own evidence level.
             termination = "matching_minimum_at_path_bound"
+            certificate = {
+                "schema_version": 1, "method": "relaxed_path_matching_duality",
+                "T_lower_bound": bound.objectives[0],
+                "row_potentials": {graph.edges[i].id: last_dual.row_potentials[row]
+                                   for row, i in enumerate(movable)},
+                "site_potentials": {site: last_dual.site_potentials[column]
+                                    for column, site in enumerate(sites)},
+            }
         else:
             # Multi-edge capacity-preserving proposals respond to the complete
             # current graph, rather than scanning all pairs in seeded order.
@@ -270,7 +278,7 @@ minimum-length matching. An interrupted later matching preserves the incumbent.
         termination = "wall_budget"
     if best_assignment is None:
         raise TimeoutError("path-matching strategy exhausted wall budget before its initial score")
-    return {
+    solution = {
         "schema_version": SCHEMA_VERSION, "task_id": TASK_ID,
         "instance_id": parsed.instance_id, "solution": {"assignment": best_assignment},
         "metadata": {
@@ -279,6 +287,8 @@ minimum-length matching. An interrupted later matching preserves the incumbent.
             "candidate_evaluations": len(trace), "completed_matchings": matchings,
             "termination": termination, "trace": trace,
             "solver_objectives": list(best_state.objectives),
-            "reference_input": False,
         },
     }
+    if certificate is not None:
+        solution["optimality_certificate"] = certificate
+    return solution

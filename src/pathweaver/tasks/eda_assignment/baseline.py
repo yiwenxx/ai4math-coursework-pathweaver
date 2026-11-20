@@ -4,8 +4,6 @@ The baseline is a heuristic, not a minimum-cost matching or optimality solver.
 Its time budget is checked cooperatively; it does not isolate candidate code.
 """
 
-from collections import deque
-from math import isfinite
 from random import Random
 from time import monotonic
 from typing import Any, Mapping
@@ -18,6 +16,7 @@ from .model import (
     TASK_ID,
     InfeasibleInstanceError,
     Instance,
+    augmenting_matching,
     geometric_length,
     parse_instance,
 )
@@ -43,79 +42,19 @@ def _initial_assignment(
         _check_deadline(deadline)
         sites = list(edge.eligible_sites)
         rng.shuffle(sites)
-        lengths: dict[str, int] = {}
-        for site_id in sites:
-            _check_deadline(deadline)
-            lengths[site_id] = geometric_length(instance, edge, site_id)
-        sites.sort(key=lengths.__getitem__)
+        sites.sort(key=lambda site_id: geometric_length(instance, edge, site_id))
         preferences[edge.id] = sites
-
-    assignment: dict[str, str] = {}
-    owners: dict[str, str] = {}
-    for root in edges:
-        _check_deadline(deadline)
-        queue = deque([root.id])
-        predecessors: dict[str, tuple[str, str]] = {}
-        seen_edges = {root.id}
-        seen_sites: set[str] = set()
-        endpoint: tuple[str, str] | None = None
-        while queue and endpoint is None:
-            edge_id = queue.popleft()
-            for site_id in preferences[edge_id]:
-                _check_deadline(deadline)
-                if site_id in seen_sites:
-                    continue
-                seen_sites.add(site_id)
-                owner = owners.get(site_id)
-                if owner is None:
-                    endpoint = (edge_id, site_id)
-                    break
-                if owner not in seen_edges:
-                    seen_edges.add(owner)
-                    predecessors[owner] = (edge_id, site_id)
-                    queue.append(owner)
-        if endpoint is None:
-            raise InfeasibleInstanceError(("eligible sites do not admit a complete matching",))
-        edge_id, site_id = endpoint
-        while True:
-            _check_deadline(deadline)
-            assignment[edge_id] = site_id
-            owners[site_id] = edge_id
-            if edge_id == root.id:
-                break
-            edge_id, site_id = predecessors[edge_id]
-    return assignment, [edge.id for edge in edges], preferences
-
-
-def _validate_budget(seed: int, budget: SolveBudget) -> None:
-    if type(seed) is not int:
-        raise ValueError("seed must be an integer")
-    if not isinstance(budget, SolveBudget):
-        raise ValueError("budget must be a SolveBudget")
-    if type(budget.max_evaluations) is not int or budget.max_evaluations < 1:
-        raise ValueError("max_evaluations must be a positive integer")
-    if type(budget.wall_seconds) not in (int, float):
-        raise ValueError("wall_seconds must be finite and positive")
-    try:
-        valid_wall = isfinite(budget.wall_seconds) and budget.wall_seconds > 0
-    except OverflowError:
-        valid_wall = False
-    if not valid_wall:
-        raise ValueError("wall_seconds must be finite and positive")
+    order = [edge.id for edge in edges]
+    assignment, hall_edges, _ = augmenting_matching(order, preferences)
+    if hall_edges:
+        raise InfeasibleInstanceError(("eligible sites do not admit a complete matching",))
+    return assignment, order, preferences
 
 
 def solve(
     instance: Mapping[str, Any], *, seed: int, budget: SolveBudget
 ) -> Mapping[str, Any]:
-    """Return a capacity-one assignment within cooperative search budgets.
-
-    Every full-DAG score, including the initial one, consumes one evaluation.
-    Seeded traversal is reproducible when the wall deadline does not intervene.
-    Parsing and matching count towards elapsed time. If they consume the time
-    budget before an incumbent can be scored, raise ``TimeoutError``. Once an
-    incumbent is scored, budget exhaustion returns the best assignment so far.
-    """
-    _validate_budget(seed, budget)
+    """Return a capacity-one assignment within cooperative search budgets."""
     deadline = monotonic() + budget.wall_seconds
     parsed = parse_instance(instance)
     _check_deadline(deadline)
@@ -202,6 +141,4 @@ def solve(
 
 def baseline(instance: Mapping[str, Any], budget: SolveBudget) -> Mapping[str, Any]:
     """TaskPack-compatible entry point using the budget's explicit random seed."""
-    if not isinstance(budget, SolveBudget):
-        raise ValueError("budget must be a SolveBudget")
     return solve(instance, seed=budget.seed, budget=budget)

@@ -1,7 +1,6 @@
 """Import a public case and compare each bundled strategy once with its reference."""
 import argparse
 from dataclasses import asdict
-import json
 import math
 from pathlib import Path
 import platform
@@ -11,16 +10,11 @@ from time import perf_counter
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from pathweaver.core.contracts import SolveBudget
+from pathweaver.core.contracts import SolveBudget, write_json
 from pathweaver.tasks.eda_assignment import EdaAssignmentTaskPack, compare_objectives
 from pathweaver.tasks.eda_assignment.open3dbench import import_coupled_def
 from pathweaver.tasks.eda_assignment.path_matching import solve as path_matching
 from pathweaver.tasks.eda_assignment.source_audit import audit_coupled_assignment
-
-
-def write_json(path, value):
-    path.write_text(json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False) + "\n",
-                    encoding="utf-8")
 
 
 def require(condition, message):
@@ -30,10 +24,10 @@ def require(condition, message):
 
 def verify(pack, bundle, solution, output, name):
     evaluation = pack.verify(bundle["instance"], solution)
-    write_json(output / f"{name}_evaluation.json", asdict(evaluation))
+    write_json( asdict(evaluation), output / f"{name}_evaluation.json")
     require(evaluation.feasible, f"Invalid {name} assignment: {evaluation.violations}")
     audit = audit_coupled_assignment(bundle, solution)
-    write_json(output / f"{name}_audit.json", audit)
+    write_json(audit, output / f"{name}_audit.json")
     require(tuple(audit["objectives"]) == evaluation.objectives,
             f"{name}: TaskPack and source geometry disagree")
     require(audit["capacity_one"] and audit["hbt_positions_preserved"]
@@ -83,7 +77,7 @@ def run(args, output):
     bundle = import_coupled_def(paths["def"], [paths["bottom_lef"], paths["upper_lef"]],
                                 paths["lib"], instance_id=f"open3dbench-{args.case}")
     for name, value in bundle.items():
-        write_json(output / f"{name}.json", value)
+        write_json(value, output / f"{name}.json")
     require(bundle["admission"]["accepted"],
             "Input does not meet coupled-path, site-competition or geometry requirements")
     pack = EdaAssignmentTaskPack()
@@ -101,10 +95,10 @@ def run(args, output):
             seconds = perf_counter() - started
             outcomes[name] = {"status": "solver_failed", "objectives": None,
                               "seconds": seconds, "error_type": type(error).__name__, "error": str(error)}
-            write_json(output / f"{name}_failure.json", outcomes[name])
+            write_json(outcomes[name], output / f"{name}_failure.json")
             continue
         seconds = perf_counter() - started
-        write_json(output / f"{name}_solution.json", solution)
+        write_json(solution, output / f"{name}_solution.json")
         try:
             evaluation, audit = verify(pack, bundle, solution, output, name)
             delta = [new - old for new, old in zip(evaluation.objectives, reference.objectives)]
@@ -113,7 +107,7 @@ def run(args, output):
         except (ValueError, TypeError, ArithmeticError, RuntimeError) as error:
             outcomes[name] = {"status": "verification_failed", "objectives": None,
                               "seconds": seconds, "error_type": type(error).__name__, "error": str(error)}
-            write_json(output / f"{name}_failure.json", outcomes[name])
+            write_json(outcomes[name], output / f"{name}_failure.json")
             continue
         outcomes[name] = {"status": "verified", "objectives": evaluation.objectives,
                           "lower_bound": evaluation.lower_bound, "evidence": evaluation.evidence,
@@ -135,7 +129,7 @@ def run(args, output):
     if success:
         summary["path_matching_vs_baseline"] = compare_objectives(
             outcomes["path-matching"]["objectives"], outcomes["baseline"]["objectives"])
-    write_json(output / "comparison.json", summary)
+    write_json(summary, output / "comparison.json")
     report(output, summary)
     print(f"{summary['status']}: {output / 'report.md'}", flush=True)
     return 0 if success else 1
@@ -160,7 +154,7 @@ def main():
     try:
         code = run(args, output)
     except (OSError, ValueError, TypeError, ArithmeticError, RuntimeError) as error:
-        write_json(output / "failure.json", {"status": "run_failed", "error_type": type(error).__name__, "error": str(error)})
+        write_json({"status": "run_failed", "error_type": type(error).__name__, "error": str(error)}, output / "failure.json")
         parser.exit(2, f"Comparison failed: {error}\n")
     raise SystemExit(code)
 

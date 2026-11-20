@@ -10,11 +10,6 @@ from .model import TASK_ID, InvalidInstanceError, InfeasibleInstanceError, parse
 
 def compare_objectives(left: tuple[int, int], right: tuple[int, int]) -> int:
     """Return -1, 0 or 1 for better, equal or worse exact (T, L) objectives."""
-    for objective in (left, right):
-        if not isinstance(objective, tuple) or len(objective) != 2:
-            raise ValueError("EDA objectives must be (T, L) tuples")
-        if any(type(value) is not int or value < 0 for value in objective):
-            raise ValueError("EDA objectives must be nonnegative integers")
     return (left > right) - (left < right)
 
 
@@ -43,7 +38,7 @@ class EdaAssignmentTaskPack:
             "wall_budget": "cooperative deadline; no execution isolation",
             "generator_size": "number of cross-tier edges",
             "lower_bound": "ignore site contention; minimize each cross-edge length",
-            "dataset_status": "hand-authored examples and public Bookshelf/Open3DBench case adapters",
+            "dataset_status": "hand-authored examples, public Bookshelf and coupled Open3DBench DEF adapters; no frozen research splits",
         }
 
     def generate(self, *, seed: int, size: int) -> Mapping[str, Any]:

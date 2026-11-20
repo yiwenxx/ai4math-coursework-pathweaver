@@ -9,10 +9,13 @@ from collections import Counter
 from collections.abc import Mapping
 from dataclasses import dataclass
 from fractions import Fraction
+from hashlib import sha256
 from math import lcm
 from pathlib import Path
 import re
 from typing import Any
+
+from .model import rectangle_overlaps
 
 
 _NUMBER = re.compile(r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?")
@@ -67,7 +70,7 @@ def _records(path: Path, kind: str) -> tuple[list[tuple[int, str]], dict[str, An
     ]
     if not records or records[0][1].split() != ["UCLA", kind, "1.0"]:
         raise ValueError(f"{path.name}: expected UCLA {kind} 1.0 header")
-    return records[1:], {"bytes": len(content)}
+    return records[1:], {"sha256": sha256(content).hexdigest(), "bytes": len(content)}
 
 
 def _count(record: tuple[int, str], name: str, filename: str) -> int:
@@ -275,11 +278,11 @@ def import_bookshelf(
         "selected_net_ids": list(snapshot.selected),
         "selected_net_count": len(snapshot.selected),
         "total_cross_net_count": len(snapshot.pairs),
-        "fixed_cross_net_count": len(snapshot.pairs) - len(snapshot.selected),
+        "frozen_cross_net_count": len(snapshot.pairs) - len(snapshot.selected),
         "total_node_count": len(snapshot.nodes),
         "total_split_net_count": len(snapshot.nets),
         "total_pin_count": sum(len(pins) for pins in snapshot.nets.values()),
-        "fixed_net_ids": sorted(snapshot.pairs.keys() - set(snapshot.selected)),
+        "frozen_net_ids": sorted(snapshot.pairs.keys() - set(snapshot.selected)),
         "selection_rule": "all and only paired nets having degree 2 on both split sides; no score-based filtering",
         "position_rule": "permute selected original occupied HBT sites; all other HBTs and all cells remain fixed",
         "objective_semantics": {
@@ -290,7 +293,7 @@ def import_bookshelf(
         "limitations": [
             "Author-committed intermediate placement snapshot, not an end-to-end placement or timing benchmark.",
             "No inferred circuit timing connectivity, technology delay calibration, TNS, or WNS.",
-            "Multi-pin cross-die nets are fixed and excluded from the optimized objective.",
+            "Multi-pin cross-die nets are frozen and excluded from the optimized objective.",
             "Occupied footprints are preserved; die boundaries, routing, spacing rules and legalization are not verified.",
         ],
         "selected_endpoints": endpoints,
@@ -359,20 +362,25 @@ def audit_bookshelf_assignment(
     total = sum(hpwl.values(), Fraction(0))
     selected_total = sum(selected_lengths.values(), Fraction(0))
     longest = max(selected_lengths.values())
-    hbt_ids = sorted(candidate_centers)
-    overlaps = 0
-    for index, left in enumerate(hbt_ids):
-        lx, ly = candidate_centers[left]
-        for right in hbt_ids[index + 1:]:
-            rx, ry = candidate_centers[right]
-            if abs(lx - rx) < (snapshot.nodes[left].width + snapshot.nodes[right].width) / 2 and abs(ly - ry) < (snapshot.nodes[left].height + snapshot.nodes[right].height) / 2:
-                overlaps += 1
+    rectangles = [
+        (
+            (
+                lx - snapshot.nodes[name].width / 2,
+                ly - snapshot.nodes[name].height / 2,
+                lx + snapshot.nodes[name].width / 2,
+                ly + snapshot.nodes[name].height / 2,
+            ),
+            name,
+        )
+        for name, (lx, ly) in candidate_centers.items()
+    ]
+    overlaps = len(rectangle_overlaps(rectangles))
     return {
         "coordinate_scale": coordinate_scale,
         "objectives": [_scaled(longest, coordinate_scale), _scaled(selected_total, coordinate_scale)],
         "total_split_hpwl": _scaled(total, coordinate_scale),
         "selected_split_hpwl": _scaled(selected_total, coordinate_scale),
-        "fixed_split_hpwl": _scaled(total - selected_total, coordinate_scale),
+        "frozen_split_hpwl": _scaled(total - selected_total, coordinate_scale),
         "hbt_positions_preserved": preserved,
         "hbt_overlap_pairs": overlaps,
         "overlap_rule": "positive-area axis-aligned HBT rectangle overlap; boundary contact excluded",
@@ -380,7 +388,7 @@ def audit_bookshelf_assignment(
             "objectives": [_exact(longest), _exact(selected_total)],
             "total_split_hpwl": _exact(total),
             "selected_split_hpwl": _exact(selected_total),
-            "fixed_split_hpwl": _exact(total - selected_total),
+            "frozen_split_hpwl": _exact(total - selected_total),
         },
         "selected_net_lengths": {base: _scaled(length, coordinate_scale) for base, length in selected_lengths.items()},
         "split_net_hpwl": {name: _scaled(length, coordinate_scale) for name, length in hpwl.items()},

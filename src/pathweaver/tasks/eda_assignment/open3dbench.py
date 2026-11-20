@@ -7,14 +7,17 @@ Exact rational LEF geometry is converted to integer coordinates without rounding
 The returned source records support a separate geometry audit without consulting
 TaskPack edges or its evaluator. Importing never invokes a solver.
 """
-from collections import defaultdict, deque
+from collections import defaultdict
 from fractions import Fraction
+import hashlib
 import heapq
 import json
 from math import lcm
 from pathlib import Path
 import re
 from typing import Any, Sequence
+
+from .model import augmenting_matching, rectangle_overlaps
 
 
 SKIPPED_NETS = {
@@ -34,6 +37,7 @@ def read(path):
     data = path.read_bytes()
     return data.decode("utf-8"), {
         "name": path.name, "bytes": len(data),
+        "sha256": hashlib.sha256(data).hexdigest(),
     }
 
 
@@ -235,29 +239,15 @@ def transformed(x, y, width, height, orientation):
 
 def shortest_matching(domains):
     """Feasibility-only augmentations and a Hall-deficient alternating witness."""
-    assignment, occupant = {}, {}
-    for edge in sorted(domains, key=lambda name: (len(domains[name]), name)):
-        queue, reached_edges, parent = deque([edge]), {edge}, {}
-        free = None
-        while queue and free is None:
-            current = queue.popleft()
-            for site in domains[current]:
-                if site in parent:
-                    continue
-                parent[site] = current
-                if site not in occupant:
-                    free = site
-                    break
-                if occupant[site] not in reached_edges:
-                    reached_edges.add(occupant[site])
-                    queue.append(occupant[site])
-        if free is None:
-            return {"complete": False, "hall_edges": sorted(reached_edges), "hall_sites": sorted(parent), "deficiency": len(reached_edges) - len(parent)}
-        while free is not None:
-            current = parent[free]
-            previous = assignment.get(current)
-            assignment[current], occupant[free] = free, current
-            free = previous
+    order = sorted(domains, key=lambda name: (len(domains[name]), name))
+    _, hall_edges, hall_sites = augmenting_matching(order, domains)
+    if hall_edges:
+        return {
+            "complete": False,
+            "hall_edges": sorted(hall_edges),
+            "hall_sites": sorted(hall_sites),
+            "deficiency": len(hall_edges) - len(hall_sites),
+        }
     return {"complete": True, "deficiency": 0}
 
 
@@ -355,7 +345,7 @@ def import_coupled_def(
 
     nodes, edges, selected, assignments = {}, [], {}, {}
     source_arcs, retained_net_records = [], {}
-    excluded_nets, excluded_pins, fixed_without_path = [], [], []
+    excluded_nets, excluded_pins, frozen_without_path = [], [], []
     def node_id(pin):
         return json.dumps(pin, separators=(",", ":"))
     for pin in sorted(connected):
@@ -411,7 +401,7 @@ def import_coupled_def(
             fixed(node_id(driver), node_id(sink), distance(xy(driver), xy(sink)), "fixed_same_tier_net", {"net": name})
         if not remote:
             if hbt:
-                fixed_without_path.append({"net": name, "hbt": hbt, "reason": "all_remote_sinks_are_control_boundaries"})
+                frozen_without_path.append({"net": name, "hbt": hbt, "reason": "all_remote_sinks_are_control_boundaries"})
             continue
         require(hbt is not None, f"data net {name} crosses dies without a reference HBT")
         expected_master = "HBT_BOTIN" if driver_tier == 0 else "HBT_TOPIN"
@@ -426,7 +416,7 @@ def import_coupled_def(
             nodes[target] = {"id": target, "x": hx, "y": hy, "tier": 1 - driver_tier}
             for sink in remote:
                 fixed(target, node_id(sink), distance((hx, hy), xy(sink)), "fixed_remote_hbt_branch", {"net": name, "hbt": hbt})
-        edges.append({"id": edge_id, "source": node_id(driver), "target": target, "base_delay": 0, "alpha": 1, "eligible_sites": [f"site:{hbt}"], "kind": "selected_two_pin_cross_net" if edge_id in selected else "fixed_cross_net", "provenance": {"net": name, "hbt": hbt}})
+        edges.append({"id": edge_id, "source": node_id(driver), "target": target, "base_delay": 0, "alpha": 1, "eligible_sites": [f"site:{hbt}"], "kind": "selected_two_pin_cross_net" if edge_id in selected else "frozen_cross_net", "provenance": {"net": name, "hbt": hbt}})
         assignments[edge_id] = f"site:{hbt}"
     require(selected, "no adjustable two-pin internal data cross-net")
     candidate_sites = sorted(f"site:{record['hbt']}" for record in selected.values())
@@ -503,13 +493,7 @@ def import_coupled_def(
         box = (x - info["width"] / 2, y - info["height"] / 2, x + info["width"] / 2, y + info["height"] / 2)
         require(box[0] >= xl and box[1] >= yl and box[2] <= xh and box[3] <= yh, f"HBT footprint outside DEF die: {name}")
         rectangles.append((box, name))
-    active, overlaps = [], []
-    for box, name in sorted(rectangles):
-        active = [(other, other_name) for other, other_name in active if other[2] > box[0]]
-        for other, other_name in active:
-            if min(other[3], box[3]) > max(other[1], box[1]):
-                overlaps.append([other_name, name])
-        active.append((box, name))
+    overlaps = rectangle_overlaps(rectangles)
     capacity = len(assignments.values()) == len(set(assignments.values()))
     admission = {
         "dag": True, "selected_cross_edges_on_witness_path": max_selected,
@@ -534,6 +518,7 @@ def import_coupled_def(
         "selected_edges": {edge: {**record, "driver": list(record["driver"]), "sink": list(record["sink"])} for edge, record in selected.items()},
         "selected_net_count": len(selected), "total_hbt_count": len(hbts),
         "fixed_hbt_count": len(hbts) - len(selected),
+        "frozen_hbt_count": len(hbts) - len(selected),
         "all_hbt_sites": {name: {"center_dbu": [exact(value) for value in info["center"]], "width_dbu": exact(info["width"]), "height_dbu": exact(info["height"]), "master": info["master"], "split_nets": info["ports"]} for name, info in hbts.items()},
         "liberty_combinational_arcs": arc_count,
         "sequential_cell_count": sum(model["sequential"] for model in cell_models.values()),
@@ -542,13 +527,13 @@ def import_coupled_def(
         "node_count": len(nodes), "edge_count": len(edges),
         "reconstructed_net_count": len(reconstructed),
         "excluded_nets": excluded_nets, "excluded_control_pins": excluded_pins,
-        "fixed_hbts_without_data_path": fixed_without_path,
+        "frozen_hbts_without_data_path": frozen_without_path,
         "scope": "Complete internal data graph of this published two-die placement, with explicit IO/clock/reset/control boundaries and sequential cell internal arcs removed.",
         "selection": "All and only two-pin cross-die internal data nets; no score-based selection.",
         "pin_geometry": "Exact Fraction center of the LEF pin rectangle union bounding box, transformed by DEF orientation and placed position.",
         "cell_arc_delay": 0,
-        "fixed_cross_net_model": "One singleton-site crossing from real driver to remote virtual HBT center, then fixed same-tier Manhattan branches; one site per physical HBT regardless of fanout.",
-        "objectives": "(T,L) lexicographic. T is full retained DAG geometric proxy path length, not timing. L sums TaskPack cross-edge geometry; omitted fixed remote branch lengths are constants, not claimed total HPWL.",
+        "frozen_cross_net_model": "One singleton-site crossing from real driver to remote virtual HBT center, then fixed same-tier Manhattan branches; one site per physical HBT regardless of fanout.",
+        "objectives": "(T,L) lexicographic. T is full retained DAG geometric proxy path length, not timing. L sums TaskPack cross-edge geometry; omitted frozen remote branch lengths are constants, not claimed total HPWL.",
         "edge_provenance": {edge["id"]: {"kind": edge["kind"], **edge["provenance"]} for edge in edges},
     }
     split_net_records = {}

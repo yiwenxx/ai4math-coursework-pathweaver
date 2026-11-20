@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from pathweaver.core.contracts import Evaluation, EvidenceLevel
+from .certificate import check_certificate
 from .model import Instance, SCHEMA_VERSION, TASK_ID, geometric_length, parse_instance
 
 
@@ -62,10 +63,10 @@ def _weights(instance: Instance, assignment: Mapping[str, str]) -> tuple[dict[st
     return delays, lengths
 
 
-def _arrival_times(instance: Instance, delays: Mapping[str, int]) -> tuple[dict[str, int], dict[str, str]]:
-    outgoing = {node: [] for node in instance.nodes}
-    for edge in instance.edges:
-        outgoing[edge.source].append(edge)
+def _arrival_times(
+    instance: Instance, delays: Mapping[str, int], outgoing: Mapping[str, list[Any]] | None = None
+) -> tuple[dict[str, int], dict[str, str]]:
+    outgoing = outgoing or instance.outgoing()
     arrival = dict.fromkeys(instance.nodes, 0)
     predecessor: dict[str, str] = {}
     for node in instance.topological_order:
@@ -81,14 +82,22 @@ def _arrival_times(instance: Instance, delays: Mapping[str, int]) -> tuple[dict[
 
 
 def score_assignment(instance: Instance, assignment: Mapping[str, str]) -> tuple[int, int]:
-    """Score an already-feasible assignment; recompute every edge and DAG arrival.
-
-    Candidate solutions must use evaluate() for independent feasibility checks.
-    Python tuple comparison implements the required lexicographic ordering.
-    """
+    """Score an already-feasible assignment; recompute every edge and DAG arrival."""
     delays, lengths = _weights(instance, assignment)
     arrivals, _ = _arrival_times(instance, delays)
     return max(arrivals.values()), sum(lengths.values())
+
+
+def _remaining_times(
+    instance: Instance, delays: Mapping[str, int], outgoing: Mapping[str, list[Any]] | None = None
+) -> dict[str, int]:
+    outgoing = outgoing or instance.outgoing()
+    remaining = dict.fromkeys(instance.nodes, 0)
+    for node in reversed(instance.topological_order):
+        remaining[node] = max(
+            (delays[edge.id] + remaining[edge.target] for edge in outgoing[node]), default=0,
+        )
+    return remaining
 
 
 def evaluate(instance_mapping: Mapping[str, Any], solution_mapping: Mapping[str, Any]) -> Evaluation:
@@ -100,19 +109,12 @@ def evaluate(instance_mapping: Mapping[str, Any], solution_mapping: Mapping[str,
             feasible=False, objectives=None, violations=violations,
             diagnostics={"failure_kind": "invalid_solution"},
         )
-    delays, lengths = _weights(instance, assignment)
-    arrivals, predecessor = _arrival_times(instance, delays)
-    total_delay, total_length = max(arrivals.values()), sum(lengths.values())
-
-    outgoing = {node: [] for node in instance.nodes}
+    outgoing = instance.outgoing()
     by_id = {edge.id: edge for edge in instance.edges}
-    for edge in instance.edges:
-        outgoing[edge.source].append(edge)
-    remaining = dict.fromkeys(instance.nodes, 0)
-    for node in reversed(instance.topological_order):
-        remaining[node] = max(
-            (delays[edge.id] + remaining[edge.target] for edge in outgoing[node]), default=0,
-        )
+    delays, lengths = _weights(instance, assignment)
+    arrivals, predecessor = _arrival_times(instance, delays, outgoing)
+    total_delay, total_length = max(arrivals.values()), sum(lengths.values())
+    remaining = _remaining_times(instance, delays, outgoing)
     slack = {
         edge.id: total_delay - arrivals[edge.source] - delays[edge.id] - remaining[edge.target]
         for edge in instance.edges
@@ -135,10 +137,17 @@ def evaluate(instance_mapping: Mapping[str, Any], solution_mapping: Mapping[str,
         else edge.base_delay + edge.alpha * relaxed_lengths[edge.id]
         for edge in instance.edges
     }
-    relaxed_arrivals, _ = _arrival_times(instance, relaxed_delays)
+    relaxed_arrivals, _ = _arrival_times(instance, relaxed_delays, outgoing)
     lower_bound = (max(relaxed_arrivals.values()), sum(relaxed_lengths.values()))
     objectives = (total_delay, total_length)
     attained = objectives == lower_bound
+    certificate = check_certificate(
+        instance, assignment, solution_mapping.get("optimality_certificate"),
+        objectives=objectives, lower_bound=lower_bound, relaxed_arrivals=relaxed_arrivals,
+        relaxed_remaining=(_remaining_times(instance, relaxed_delays, outgoing)
+                           if solution_mapping.get("optimality_certificate") is not None else {}),
+    )
+    certified = certificate["status"] == "verified"
     occupant = {site: edge for edge, site in assignment.items()}
     diagnostics = {
         "arrivals": arrivals,
@@ -164,8 +173,11 @@ def evaluate(instance_mapping: Mapping[str, Any], solution_mapping: Mapping[str,
         },
         "lower_bound_method": "independent_minimum_lengths_ignoring_site_capacity",
         "lower_bound_attained": attained,
+        "optimality_certificate": certificate,
+        "optimality_method": ("relaxed_path_matching_duality" if certified
+                              else "independent_coordinate_lower_bounds" if attained else None),
     }
     return Evaluation(
         feasible=True, objectives=objectives, diagnostics=diagnostics, lower_bound=lower_bound,
-        evidence=EvidenceLevel.FINITE_OPTIMAL if attained else EvidenceLevel.EXPERIMENTAL,
+        evidence=EvidenceLevel.FINITE_OPTIMAL if attained or certified else EvidenceLevel.EXPERIMENTAL,
     )
