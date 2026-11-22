@@ -6,16 +6,11 @@ import heapq
 from typing import Any
 
 
+from pathweaver.core.contracts import InvalidInstanceError
+
+
 TASK_ID = "eda_assignment"
 SCHEMA_VERSION = 1
-
-
-class InvalidInstanceError(ValueError):
-    """The instance is malformed or does not define a supported DAG."""
-
-    def __init__(self, violations: Sequence[str]):
-        self.violations = tuple(violations)
-        super().__init__("; ".join(self.violations))
 
 
 class InfeasibleInstanceError(InvalidInstanceError):

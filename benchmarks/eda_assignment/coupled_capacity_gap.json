@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "task_id": "eda_assignment",
+  "instance_id": "coupled_capacity_gap",
+  "metadata": {
+    "provenance": "hand_authored_structural_diagnostic",
+    "description": "Two serial cross edges compete with a parallel path for three sites. Capacity makes the relaxed T bound unattainable."
+  },
+  "data": {
+    "nodes": [
+      {"id": "a0", "x": -2, "y": 0, "tier": 0},
+      {"id": "a1", "x": 2, "y": 0, "tier": 1},
+      {"id": "a2", "x": -2, "y": 0, "tier": 0},
+      {"id": "b0", "x": 0, "y": 0, "tier": 0},
+      {"id": "b1", "x": 0, "y": 0, "tier": 1}
+    ],
+    "sites": [
+      {"id": "s0", "x": 0, "y": 0},
+      {"id": "s1", "x": 3, "y": 0},
+      {"id": "s2", "x": 4, "y": 0}
+    ],
+    "edges": [
+      {"id": "e1", "source": "a0", "target": "a1", "base_delay": 0, "alpha": 1, "eligible_sites": ["s0", "s1", "s2"]},
+      {"id": "e2", "source": "a1", "target": "a2", "base_delay": 0, "alpha": 1, "eligible_sites": ["s0", "s1", "s2"]},
+      {"id": "e3", "source": "b0", "target": "b1", "base_delay": 2, "alpha": 1, "eligible_sites": ["s0", "s1", "s2"]}
+    ]
+  }
+}

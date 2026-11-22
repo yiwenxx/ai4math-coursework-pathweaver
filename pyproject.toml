@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pathweaver-math-agent"
 dynamic = ["version"]
-description = "Verifiable EDA path-coupled assignment with independent evaluation and reproducible solvers"
+description = "Verifiable AI4Math core: EDA, WVC, JSP-000158, ClaimLedger, and Lean 4 formal verification"
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
 license = {text = "Apache-2.0"}
@@ -28,3 +28,4 @@ version = {attr = "pathweaver.__version__"}
 
 [tool.setuptools.package-data]
 "pathweaver.tasks" = ["catalog.toml"]
+"pathweaver.tasks.lean_proof" = ["discovery_seed.lean"]

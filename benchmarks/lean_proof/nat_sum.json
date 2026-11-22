@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "task_id": "lean_proof",
+  "instance_id": "lean-nat-sum-closed-form",
+  "data": {
+    "theorem_name": "target_theorem",
+    "imports": [],
+    "preamble": "def sumFirst : Nat → Nat\n  | 0 => 0\n  | n + 1 => sumFirst n + (n + 1)",
+    "statement": "(n : Nat) : 2 * sumFirst n = n * (n + 1)",
+    "allowed_axioms": ["propext", "Classical.choice", "Quot.sound"],
+    "allow_sorry_seed": true,
+    "reference_proof": "induction n with\n| zero => rfl\n| succ k ih =>\n    rw [sumFirst, Nat.mul_add, ih]\n    simp only [Nat.mul_add, Nat.add_mul]\n    omega"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "task_id": "lean_proof",
+  "instance_id": "lean-eda-reduced-cost-duality",
+  "data": {
+    "theorem_name": "target_theorem",
+    "imports": ["PathWeaverFormal.EdaDuality"],
+    "preamble": "open PathWeaverFormal.Eda",
+    "statement": "(n m : Nat) (lengths : Nat → Nat → Int) (allowed : Nat → Nat → Bool) (u v : Nat → Int) (assign : Nat → Nat) (hfeas : IsFeasibleMatching n m allowed assign) (hv : ∀ s, s < m → v s ≤ 0) (hred : ∀ e s, e < n → s < m → allowed e s = true → 0 ≤ lengths e s - u e - v s) : sumInt n u + sumInt m v ≤ sumInt n (fun e => lengths e (assign e))",
+    "allowed_axioms": ["propext", "Classical.choice", "Quot.sound"],
+    "allow_sorry_seed": true,
+    "reference_proof": "apply eda_weak_duality n m lengths allowed u v assign hfeas hv\nintro e s he hs hall\nhave hr := hred e s he hs hall\nomega"
+  }
+}

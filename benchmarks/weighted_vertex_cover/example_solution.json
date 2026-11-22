@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "task_id": "weighted_vertex_cover",
+  "instance_id": "weighted_vertex_cover_illustration_001",
+  "solution": {
+    "selected_vertices": [
+      "b",
+      "d"
+    ]
+  },
+  "expected_objectives": [
+    2
+  ],
+  "provenance": "hand_authored_illustration_not_program_verified"
+}

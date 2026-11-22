@@ -15,3 +15,8 @@ data/
 instance.json
 solution.json
 path-solution.json
+formal/.lake/
+*.sqlite3
+*.sqlite3-shm
+*.sqlite3-wal
+*.sqlite3-journal

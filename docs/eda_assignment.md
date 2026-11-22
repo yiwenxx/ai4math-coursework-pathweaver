@@ -53,26 +53,29 @@ delay(e,s)  = base_delay(e) + alpha(e) * length(e,s)
 图必须无环。每条跨层边的资格列表不含重复站点，所有跨层边合起来必须存在完整匹配；
 仅有足够数量的站点不能保证可行。解必须恰好覆盖所有跨层边，不得重复使用站点。
 
-## 独立评估
+## 独立评估与有限最优证书
 
-评估器重新解析实例、检查分配并从坐标计算 `(T,L)`。解中的自报分数与证书不作为依据。
+评估器重新解析实例、检查分配并从坐标计算 `(T,L)`。解中的自报分数不作为依据。
 输出包含 `feasible`、`objectives`、`violations`、`diagnostics`、`lower_bound` 和 `evidence`。
-诊断给出到达时间、后向路径、边松弛量、一条关键路径及站点竞争情况。
+诊断给出到达时间、后向路径、边松弛量、一条关键路径、站点竞争情况及 `optimality_certificate` 状态。
 
 下界忽略容量，为每条跨层边独立取最短合法线长，再计算完整 DAG 的 T 和总 L。
-只有合法解同时达到两个下界坐标时，评估器才标记 `finite_optimal`。只达到 T 下界
-不证明字典序最优；其他合法解保留 `experimental` 标签。
+以下两条独立路径可授予 `finite_optimal`：
+1. 合法解同时达到松弛下界的两个坐标 `(T_lb, L_lb)`；
+2. 合法解达到 `T_lb` 且附带 `optimality_certificate`（Hungarian 行/站点对偶势），由完全不导入求解器的独立检查器（`certificate.py`）重建必要边域并核验对偶可行性、互补松弛、原始—对偶等式及完整 DAG `T = T_lb` 均通过（`status == "verified"`）。
+
+普通 `eda verify` 保持可行性语义；加上 `--require-certificate` 时，除可行外还要求独立核验证书通过，否则退出码为 1。其他合法解保留 `experimental` 标签。
 
 ## 求解与预算
 
 `baseline` 构造长度偏好的可行匹配，再尝试空闲站点移动和成对交换；接受第一个严格
-字典序改善并重启邻域扫描。`path-matching` 使用全图路径下界和全局最小代价匹配，
+字典序改善并重启邻域扫描。`path-matching` 使用全图路径下界和全局最小代价匹配（首次匹配达到 T 下界时同时输出原始—对偶证书），
 必要时尝试最多 8 轮路径压力与 3 次可行节点势引导的匹配。两者都没有普适最优保证。
 
 ```bash
 pathweaver eda solve instance.json --seed 0 --max-evaluations 1000 --wall-seconds 30 --output solution.json
 pathweaver eda solve instance.json --strategy path-matching --seed 0 --max-evaluations 1000 --wall-seconds 30 --output path-solution.json
-pathweaver eda verify instance.json path-solution.json
+pathweaver eda verify instance.json path-solution.json --require-certificate
 ```
 
 每次完整 DAG 计分消耗一次评估，包括初始解和新策略可选的下界计算。解析、资格检查、

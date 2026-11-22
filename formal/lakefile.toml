@@ -1,0 +1,6 @@
+name = "PathWeaverFormal"
+version = "0.1.0"
+defaultTargets = ["PathWeaverFormal"]
+
+[[lean_lib]]
+name = "PathWeaverFormal"

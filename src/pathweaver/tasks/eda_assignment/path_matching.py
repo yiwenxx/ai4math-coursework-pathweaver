@@ -205,6 +205,53 @@ def solve(instance: Mapping[str, Any], budget: SolveBudget) -> Mapping[str, Any]
                           "elapsed_seconds": monotonic() - started})
             return state
 
+        def find_hall_conflict(threshold):
+            """Find a subset of movable rows whose allowed neighborhood at <= threshold violates Hall's theorem."""
+            adj = []
+            for row, i in enumerate(movable):
+                edge = graph.edges[i]
+                cap = threshold - bound.arrivals[graph.source[i]] - bound.remaining[graph.target[i]]
+                adj.append([
+                    j for j, length in domains[row].items()
+                    if edge.base_delay + edge.alpha * length <= cap
+                ])
+                if not adj[-1]:
+                    return [graph.edges[i].id]
+            site_owner = {}
+            row_seen = set()
+            for r in range(len(movable)):
+                _check(deadline)
+                visited_rows = {r}
+                visited_sites = set()
+                queue = [r]
+                parent_site = {}
+                found_site = None
+                while queue and found_site is None:
+                    cur = queue.pop(0)
+                    for j in adj[cur]:
+                        if j in visited_sites:
+                            continue
+                        visited_sites.add(j)
+                        parent_site[j] = cur
+                        if j not in site_owner:
+                            found_site = j
+                            break
+                        nxt = site_owner[j]
+                        if nxt not in visited_rows:
+                            visited_rows.add(nxt)
+                            queue.append(nxt)
+                if found_site is None:
+                    row_seen = visited_rows
+                    return [graph.edges[movable[idx]].id for idx in sorted(row_seen)]
+                # Augment along alternating path.
+                cur_site = found_site
+                while cur_site is not None:
+                    owner_row = parent_site[cur_site]
+                    prev_site = next((s for s, owner in site_owner.items() if owner == owner_row), None)
+                    site_owner[cur_site] = owner_row
+                    cur_site = prev_site
+            return None
+
         caps = None
         if budget.max_evaluations >= 2:
             _check(deadline)
@@ -216,11 +263,45 @@ def solve(instance: Mapping[str, Any], budget: SolveBudget) -> Mapping[str, Any]
                     - bound.remaining[graph.target[i]] for i in movable]
         initial = matching(caps)
         restricted_initial = initial is not None and bound is not None
+        hall_bound = None
+        hall_blocking_set = None
+        if initial is None and bound is not None and movable:
+            # Binary search smallest threshold T_hall >= T_lb + 1 admitting a complete matching.
+            thresholds = sorted({
+                bound.arrivals[graph.source[i]] + graph.edges[i].base_delay
+                + graph.edges[i].alpha * length + bound.remaining[graph.target[i]]
+                for row, i in enumerate(movable)
+                for length in domains[row].values()
+            })
+            candidates = [t for t in thresholds if t > bound.objectives[0]]
+            lo, hi = 0, len(candidates) - 1
+            best_idx = None
+            while lo <= hi:
+                mid = (lo + hi) // 2
+                _check(deadline)
+                if find_hall_conflict(candidates[mid]) is None:
+                    best_idx = mid
+                    hi = mid - 1
+                else:
+                    lo = mid + 1
+            if best_idx is not None:
+                hall_bound = candidates[best_idx]
+                hall_blocking_set = find_hall_conflict(hall_bound - 1)
+                hall_caps = [hall_bound - bound.arrivals[graph.source[i]]
+                             - bound.remaining[graph.target[i]] for i in movable]
+                initial = matching(hall_caps)
+                if initial is not None:
+                    caps = hall_caps
         if initial is None:
             initial = matching()
         if initial is None:
             raise ValueError("minimum-cost matching failed for a validated feasible instance")
-        consider(initial, "minimum_length_under_relaxed_path_caps" if restricted_initial else "minimum_length")
+        consider(
+            initial,
+            "minimum_length_under_relaxed_path_caps" if restricted_initial
+            else "minimum_length_under_hall_path_caps" if hall_bound is not None
+            else "minimum_length",
+        )
         if best_state is None:
             raise _Deadline
 
@@ -232,6 +313,17 @@ def solve(instance: Mapping[str, Any], budget: SolveBudget) -> Mapping[str, Any]
             certificate = {
                 "schema_version": 1, "method": "relaxed_path_matching_duality",
                 "T_lower_bound": bound.objectives[0],
+                "row_potentials": {graph.edges[i].id: last_dual.row_potentials[row]
+                                   for row, i in enumerate(movable)},
+                "site_potentials": {site: last_dual.site_potentials[column]
+                                    for column, site in enumerate(sites)},
+            }
+        elif hall_bound is not None and hall_blocking_set and best_state.objectives[0] == hall_bound:
+            termination = "matching_minimum_at_hall_bound"
+            certificate = {
+                "schema_version": 1, "method": "hall_bottleneck_and_dual",
+                "T_lower_bound": hall_bound,
+                "hall_blocking_set": hall_blocking_set,
                 "row_potentials": {graph.edges[i].id: last_dual.row_potentials[row]
                                    for row, i in enumerate(movable)},
                 "site_potentials": {site: last_dual.site_potentials[column]
@@ -254,7 +346,7 @@ def solve(instance: Mapping[str, Any], budget: SolveBudget) -> Mapping[str, Any]
                     slack = total - through
                     if slack < threshold:
                         weights[row] += 1 + (threshold - slack) * 8 // threshold
-                candidate = matching(caps if restricted_initial else None, weights)
+                candidate = matching(caps if (restricted_initial or hall_bound is not None) else None, weights)
                 trial = consider(candidate, f"path_pressure_{round_number + 1}")
                 if trial is not None:
                     working = trial
@@ -273,6 +365,12 @@ def solve(instance: Mapping[str, Any], budget: SolveBudget) -> Mapping[str, Any]
                              for a, r in zip(best_state.arrivals, best_state.remaining)]
                 safe_caps = [potential[graph.target[i]] - potential[graph.source[i]] for i in movable]
                 consider(matching(safe_caps), f"feasible_path_potentials_{numerator}/2")
+            if certificate is None and hall_bound is not None and hall_blocking_set:
+                certificate = {
+                    "schema_version": 1, "method": "hall_bottleneck_lower_bound",
+                    "T_lower_bound": hall_bound,
+                    "hall_blocking_set": hall_blocking_set,
+                }
             termination = reason() or "proposal_stagnation"
     except _Deadline:
         termination = "wall_budget"

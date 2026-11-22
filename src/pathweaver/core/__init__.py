@@ -1,1 +1,1 @@
-"""Domain-neutral interfaces and evidence types."""
+"""Domain-neutral contracts, generalized certificates, and research-record schemas."""

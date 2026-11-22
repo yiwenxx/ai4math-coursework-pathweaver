@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "task_id": "lean_proof",
+  "instance_id": "lean-f11-square-even",
+  "data": {
+    "theorem_name": "target_theorem",
+    "imports": ["PathWeaverFormal.FrobeniusBase"],
+    "preamble": "open PathWeaverFormal.Frobenius",
+    "statement": ": ∀ x : F11, f11Mul x x = f11Mul (f11Neg x) (f11Neg x)",
+    "allowed_axioms": ["propext", "Classical.choice", "Quot.sound"],
+    "allow_sorry_seed": true,
+    "reference_proof": "decide"
+  }
+}

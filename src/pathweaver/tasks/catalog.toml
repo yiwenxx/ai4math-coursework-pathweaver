@@ -1,4 +1,5 @@
 schema_version = 1
+
 [[task]]
 id = "eda_assignment"
 title = "Path-coupled hybrid-bonding assignment"
@@ -6,3 +7,28 @@ scope = "primary"
 status = "implemented"
 implementation = "pathweaver.tasks.eda_assignment:EdaAssignmentTaskPack"
 objectives = ["min_longest_path", "min_wirelength_lexicographic"]
+
+[[task]]
+id = "weighted_vertex_cover"
+title = "Weighted minimum vertex cover"
+scope = "required_transfer"
+status = "implemented"
+implementation = "pathweaver.tasks.weighted_vertex_cover:WeightedVertexCoverTaskPack"
+objectives = ["min_selected_weight"]
+
+[[task]]
+id = "jsp158_coloring"
+title = "JSP-000158 four-term arithmetic progression coloring"
+scope = "research_extension"
+status = "implemented"
+implementation = "pathweaver.tasks.jsp158_coloring:Jsp158ColoringTaskPack"
+objectives = ["min_color_count"]
+
+[[task]]
+id = "lean_proof"
+title = "Lean 4 statement-locked formal theorem proving"
+scope = "formal_verification"
+status = "implemented"
+implementation = "pathweaver.tasks.lean_proof:LeanProofTaskPack"
+objectives = ["min_incomplete_flag", "min_sorry_count", "min_proof_bytes"]
+

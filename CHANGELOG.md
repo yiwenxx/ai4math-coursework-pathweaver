@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0.dev1 — 2026-11-22
+
+- Integrate full-stack **Lean 4 formal verification**: bundled zero-Mathlib `PathWeaverFormal` library (`leanprover/lean4:v4.36.0`), `pathweaver lean` CLI (`info`, `check`, `verify-instance`, `export-cert`, `admit-claim`), EDA/WVC/JSP-000158 Lean certificate exporters, and statement-locked `lean_proof` TaskPack with `#print axioms` audit.
+- Extend solver-independent certificates beyond strong duality: generic `verify_bnb_proof_tree` kernel (`core/certificates.py`), EDA `hall_bottleneck_and_dual`, WVC `valid_inequality_dual` (edges/odd cycles/cliques) and `bnb_proof_tree`, and JSP-000158 `coloring_lower_bound_tree`.
+- Upgrade the pure-stdlib discovery & evidence core: exact-integer Pareto stepping-stone preservation (`exact_ordering.py`), AST paradigm-escape monitor (`strategy_escape.py`), graded revocation & implicit context-taint SQLite ledger (`store.py`, `retrieval.py`, `context.py`), impact-weighted `ClaimLedger` (`pathweaver claims`), and Lean 4 kernel verification bridge (`formal_verifier.py`).
+- Verify solver-independent EDA Hungarian primal–dual optimality certificates (`--require-certificate`) live on fixtures, Open3DBench AES (`(744915, 32038820)`) and Ibex (`(1663875, 47840820)`), plus WVC transfer TaskPack (`pathweaver wvc`), `q=121` mixed-curve witness certificate (`results/q121_mixed_curve_certificate.json`, 40,656 groups / 4,919,376 equations), `ff_probe.py`, `scripts/run_eda_capacity_gap_case.py`, and `README.en.md`.
+
 ## JSP-000158 research update — 2026-11-11
 
 - Publish full proof drafts for arbitrary mixed Frobenius/linear coefficients:

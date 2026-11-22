@@ -1,18 +1,37 @@
-"""Domain-neutral contracts shared by implemented TaskPacks and research code."""
+"""Domain-neutral contracts, JSON/hash primitives, and envelope validators."""
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import Enum
+from hashlib import sha256
 import json
 import math
+import os
 from pathlib import Path
-from typing import Any, Mapping, Protocol, Sequence
+from typing import Any, Protocol
+from uuid import uuid4
+
+
+class IsolationError(RuntimeError):
+    """Raised when an execution sandbox or required formal verifier backend is unavailable."""
+
+
+class InvalidInstanceError(ValueError):
+    """Raised when a task instance violates its structural or schema contract."""
+
+    def __init__(self, violations: Sequence[str]):
+        self.violations = tuple(violations)
+        super().__init__("; ".join(self.violations))
 
 
 class EvidenceLevel(str, Enum):
     HYPOTHESIS = "hypothesis"
+    UNVERIFIED = "unverified"
     EXPERIMENTAL = "experimental"
     COUNTEREXAMPLE = "counterexample"
+    CERTIFIED_BOUND = "certified_bound"
     FINITE_OPTIMAL = "finite_optimal"
     HUMAN_PROOF = "human_proof"
+    FORMAL_VERIFIED = "formal_verified"
 
 
 @dataclass(frozen=True)
@@ -72,6 +91,71 @@ class DiscoveryTask(Protocol):
     def brief(self) -> str: ...
 
 
+def digest(data: bytes) -> str:
+    return sha256(data).hexdigest()
+
+
+def canonical_json(value: Any) -> str:
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
+
+
+def require_text(value: Any, name: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{name} must be nonempty text")
+    return value
+
+
+def require_nonneg_int(value: Any, name: str) -> int:
+    if type(value) is not int or value < 0:
+        raise ValueError(f"{name} must be a nonnegative integer")
+    return value
+
+
+def validate_instance_envelope(
+    raw: Any,
+    *,
+    task_id: str,
+    schema_version: int = 1,
+) -> tuple[str, Mapping[str, Any]]:
+    """Validate common `(schema_version, task_id, instance_id, data)` instance envelope."""
+    if not isinstance(raw, Mapping):
+        raise ValueError("instance must be a JSON object")
+    if type(raw.get("schema_version")) is not int or raw["schema_version"] != schema_version:
+        raise ValueError(f"schema_version must be {schema_version}")
+    if raw.get("task_id") != task_id:
+        raise ValueError(f"task_id must be {task_id!r}")
+    instance_id = require_text(raw.get("instance_id"), "instance_id")
+    data = raw.get("data")
+    if not isinstance(data, Mapping):
+        raise ValueError("data must be an object")
+    return instance_id, data
+
+
+def validate_solution_envelope(
+    solution: Any,
+    *,
+    task_id: str,
+    instance_id: str,
+    schema_version: int = 1,
+) -> tuple[Mapping[str, Any] | None, list[str]]:
+    """Validate common solution envelope and return `(payload_or_None, violations)`."""
+    if not isinstance(solution, Mapping):
+        return None, ["solution must be an object"]
+    violations: list[str] = []
+    version = solution.get("schema_version")
+    if type(version) is not int or version != schema_version:
+        violations.append(f"solution.schema_version must be {schema_version}")
+    if solution.get("task_id") != task_id:
+        violations.append(f"solution.task_id must be {task_id!r}")
+    if solution.get("instance_id") != instance_id:
+        violations.append("solution.instance_id does not match the instance")
+    payload = solution.get("solution")
+    if not isinstance(payload, Mapping):
+        violations.append("solution.solution must be an object")
+        return None, violations
+    return payload, violations
+
+
 def _unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for key, value in pairs:
@@ -83,6 +167,10 @@ def _unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 
 def _reject_constant(value: str) -> None:
     raise ValueError(f"non-finite JSON number: {value}")
+
+
+def read_json(path: str | Path) -> Any:
+    return json.loads(Path(path).read_text(encoding="utf-8"))
 
 
 def read_strict_json(path: str | Path) -> Any:
@@ -98,4 +186,17 @@ def write_json(value: Any, path: str | Path | None = None) -> None:
     if path is None:
         print(text, end="")
     else:
-        Path(path).write_text(text, encoding="utf-8")
+        Path(path).write_text(text, encoding="utf-8", newline="\n")
+
+
+def atomic_json(path: str | Path, value: Any) -> None:
+    target = Path(path)
+    temporary = target.with_name(f".{target.name}.{uuid4().hex}.tmp")
+    try:
+        with temporary.open("w", encoding="utf-8", newline="\n") as stream:
+            stream.write(canonical_json(value) + "\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, target)
+    finally:
+        temporary.unlink(missing_ok=True)

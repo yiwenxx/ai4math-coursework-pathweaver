@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "task_id": "jsp158_coloring",
+  "instance_id": "jsp158-example-n4",
+  "solution": {"colors": [0, 0, 1, 2]},
+  "expected_objectives": [3],
+  "provenance": "hand_authored_illustration_not_program_verified"
+}

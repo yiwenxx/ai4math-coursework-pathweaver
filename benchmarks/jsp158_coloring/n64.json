@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "task_id": "jsp158_coloring",
+  "instance_id": "jsp158-training-n64",
+  "data": {"n": 64},
+  "provenance": "fixed_parameter_illustration_not_research_benchmark"
+}
