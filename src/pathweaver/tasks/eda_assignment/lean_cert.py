@@ -1,4 +1,12 @@
-"""Export independent EDA duality & Hall-conflict certificates to kernel-checked Lean 4 proofs."""
+"""Export independent EDA duality & Hall-conflict certificates to kernel-checked Lean 4 proofs.
+
+Trust boundary:
+- Lean 4 (`PathWeaverFormal.EdaDuality`) formally certifies bipartite matching weak/strong
+  duality and Hall pigeonhole infeasibility on the exported integer length and boolean
+  eligibility matrices (`edaLengths`, `edaAllowed`, `edaAllowedBelow`).
+- The reduction from raw DAG topology/Manhattan geometry to those allowed-edge matrices
+  is independently computed by the host Python verifier (`prepare_verifier`).
+"""
 from collections.abc import Mapping
 from typing import Any
 
@@ -105,6 +113,11 @@ def export_eda_lean_certificate(
 
     if has_hall:
         blocking_ids = list(raw_cert["hall_blocking_set"])
+        missing_movable = [eid for eid in blocking_ids if eid not in edge_index]
+        if missing_movable:
+            raise ValueError(
+                f"Cannot export movable-edge bipartite Hall proof for forced/unknown edge(s): {missing_movable!r}"
+            )
         blocking_indices = [edge_index[eid] for eid in blocking_ids]
         allowed_below = _allowed_matrix(t_bound - 1)
         nbhd_indices = sorted({

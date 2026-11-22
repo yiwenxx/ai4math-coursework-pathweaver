@@ -15,7 +15,7 @@ class ResearchContext:
     through_sequence: int
 
 
-def _brief(hit: MemoryHit, store: MemoryStore, cutoff: int) -> dict[str, Any]:
+def _brief(hit: MemoryHit, store: MemoryStore, cutoff: int, run_cache: dict[str, Any]) -> dict[str, Any]:
     event = hit.event
     data = event.payload
     fields = {
@@ -32,7 +32,10 @@ def _brief(hit: MemoryHit, store: MemoryStore, cutoff: int) -> dict[str, Any]:
         serialized = json.dumps(body["diagnostics"], ensure_ascii=False, sort_keys=True)
         if len(serialized) > 900:
             body["diagnostics"] = {"excerpt": serialized[:850], "truncated": True}
-    source_run = store.get(event.run_id, as_of=cutoff)
+    source_run = run_cache.get(event.run_id)
+    if source_run is None:
+        source_run = store.get(event.run_id, as_of=cutoff)
+        run_cache[event.run_id] = source_run
     entry: dict[str, Any] = {
         "id": event.record_id, "revision": event.revision, "sequence": event.sequence,
         "kind": event.kind, "source_run": event.run_id,
@@ -73,8 +76,9 @@ def build_context(store: MemoryStore, query: MemoryQuery, *, max_chars: int = 60
 
     if len(render()) > max_chars:
         raise ValueError("Budget is too small for mandatory scope metadata")
+    run_cache = {query.run_id: run}
     for hit in hits:
-        entry = _brief(hit, store, cutoff)
+        entry = _brief(hit, store, cutoff, run_cache)
         document["records"].append(entry)
         if len(render()) > max_chars:
             document["records"].pop()

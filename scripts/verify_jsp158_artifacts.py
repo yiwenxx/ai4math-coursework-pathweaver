@@ -51,11 +51,18 @@ def check_cyclic(row):
             "crosses_quarter_threshold": violations == 0 and m > len(set(colors)) ** 4}
 
 
+def _default_artifact() -> Path:
+    root = Path(__file__).resolve().parents[1]
+    direct = root / "research/jsp158/finite-colorings.json"
+    if direct.is_file():
+        return direct
+    public_copy = root / "publication/public/research/jsp158/finite-colorings.json"
+    return public_copy if public_copy.is_file() else direct
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("file", nargs="?", type=Path,
-                        default=Path(__file__).resolve().parents[1]
-                        / "research/jsp158/finite-colorings.json")
+    parser.add_argument("file", nargs="?", type=Path, default=_default_artifact())
     args = parser.parse_args()
     try:
         data = json.loads(args.file.read_text(encoding="utf-8"))

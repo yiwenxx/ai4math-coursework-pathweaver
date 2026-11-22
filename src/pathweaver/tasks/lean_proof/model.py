@@ -1,5 +1,5 @@
 """Trusted instance representation and validation for Lean 4 theorem proving."""
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 import re
 from typing import Any

@@ -138,9 +138,11 @@ def exact_solve(instance_raw: Mapping[str, Any], budget: SolveBudget, *, emit_ce
         return None
 
     tree = search(0, set(), set(), 0)
+    completed_first_pass = not timed_out
+    cert_tree = tree if completed_first_pass else None
     # Note: if best_set came strictly from warm-start and no leaf beat it, emit leaf check on exact incumbent.
     # To keep proof tree guaranteed to contain at least one `incumbent` leaf attaining `best_weight`:
-    if emit_certificate and not timed_out and tree is not None:
+    if emit_certificate and completed_first_pass and cert_tree is not None:
         def _has_attaining_incumbent(node: dict[str, Any]) -> bool:
             k = node.get("kind")
             if k == "incumbent":
@@ -149,12 +151,19 @@ def exact_solve(instance_raw: Mapping[str, Any], budget: SolveBudget, *, emit_ce
                 return _has_attaining_incumbent(node["include"]) or _has_attaining_incumbent(node["exclude"])
             return False
 
-        if not _has_attaining_incumbent(tree):
+        if not _has_attaining_incumbent(cert_tree):
             # Re-run strict search from upper bound best_weight + 1 so optimal leaf is explicitly emitted.
-            best_weight_cap = best_weight + 1
-            best_weight = best_weight_cap
+            saved_weight = best_weight
+            saved_set = set(best_set)
+            best_weight = saved_weight + 1
             nodes_visited = 0
-            tree = search(0, set(), set(), 0)
+            rerun_tree = search(0, set(), set(), 0)
+            if timed_out or rerun_tree is None:
+                best_weight = saved_weight
+                best_set = saved_set
+                cert_tree = None
+            else:
+                cert_tree = rerun_tree
 
     out: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
@@ -164,9 +173,9 @@ def exact_solve(instance_raw: Mapping[str, Any], budget: SolveBudget, *, emit_ce
         "metadata": {
             "strategy": "exact_branch_and_bound",
             "nodes_visited": nodes_visited,
-            "completed_search": not timed_out,
+            "completed_search": completed_first_pass,
         },
     }
-    if emit_certificate and not timed_out and tree is not None:
-        out["optimality_certificate"] = {"schema_version": 1, "method": "bnb_proof_tree", "tree": tree}
+    if emit_certificate and completed_first_pass and cert_tree is not None:
+        out["optimality_certificate"] = {"schema_version": 1, "method": "bnb_proof_tree", "tree": cert_tree}
     return out

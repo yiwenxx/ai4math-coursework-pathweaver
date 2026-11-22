@@ -9,7 +9,6 @@ TaskPack edges or its evaluator. Importing never invokes a solver.
 """
 from collections import defaultdict
 from fractions import Fraction
-import hashlib
 import heapq
 import json
 from math import lcm
@@ -17,6 +16,7 @@ from pathlib import Path
 import re
 from typing import Any, Sequence
 
+from pathweaver.core.contracts import digest
 from .model import augmenting_matching, rectangle_overlaps
 
 
@@ -37,7 +37,7 @@ def read(path):
     data = path.read_bytes()
     return data.decode("utf-8"), {
         "name": path.name, "bytes": len(data),
-        "sha256": hashlib.sha256(data).hexdigest(),
+        "sha256": digest(data),
     }
 
 

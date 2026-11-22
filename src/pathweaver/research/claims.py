@@ -100,10 +100,19 @@ class ClaimLedger:
             if len(raw) > 1_000_000 or digest(raw) != item.sha256:
                 raise ValueError(f"Evidence size or hash mismatch: {item.id}")
             text = raw.decode("utf-8")
-            if verify_formal and item.kind == "formal_proof" and path.suffix.lower() == ".lean":
-                from pathweaver.research.formal_verifier import verify_formal_proof
+            if verify_formal and item.kind == "formal_proof":
+                if path.suffix.lower() != ".lean":
+                    raise ValueError(
+                        f"Formal proof verification failed for {item.id}: expected a .lean file, got {path.name!r}"
+                    )
+                from pathweaver.research.formal_verifier import extract_lean_theorem_names, verify_formal_proof
 
-                verdict = verify_formal_proof(text, backend="lean4")
+                theorems = extract_lean_theorem_names(text)
+                if not theorems:
+                    raise ValueError(
+                        f"Formal proof verification failed for {item.id}: no Lean theorem/lemma declaration found for axiom audit"
+                    )
+                verdict = verify_formal_proof(text, backend="lean4", theorem_name=theorems[-1])
                 if verdict.status != "verified":
                     detail = "; ".join(verdict.soundness_errors) or verdict.compiler_output[:240]
                     raise ValueError(f"Formal proof verification failed for {item.id}: {verdict.status} ({detail})")

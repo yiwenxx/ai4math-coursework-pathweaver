@@ -24,7 +24,7 @@ def require(condition, message):
 
 def verify(pack, bundle, solution, output, name):
     evaluation = pack.verify(bundle["instance"], solution)
-    write_json( asdict(evaluation), output / f"{name}_evaluation.json")
+    write_json(asdict(evaluation), output / f"{name}_evaluation.json")
     require(evaluation.feasible, f"Invalid {name} assignment: {evaluation.violations}")
     audit = audit_coupled_assignment(bundle, solution)
     write_json(audit, output / f"{name}_audit.json")
@@ -71,7 +71,8 @@ def run(args, output):
     }
     for path in paths.values():
         if not path.is_file():
-            raise ValueError(f"Missing input {path}; see docs/eda_public_cases.md")
+            doc_hint = "docs/eda_public_cases.md" if (ROOT / "docs/eda_public_cases.md").is_file() else "docs/tasks/eda_coupled_public_case.md"
+            raise ValueError(f"Missing input {path}; see {doc_hint}")
     budget = SolveBudget(args.wall_seconds, args.max_evaluations, args.seed)
     print(f"Importing {args.case} and checking coupled paths and site competition...", flush=True)
     bundle = import_coupled_def(paths["def"], [paths["bottom_lef"], paths["upper_lef"]],

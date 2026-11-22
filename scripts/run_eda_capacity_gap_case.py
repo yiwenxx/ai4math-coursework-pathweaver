@@ -89,8 +89,11 @@ def verify(pack, instance, solution, exact, output, name):
     row = next((row for row in exact["assignments"] if row["assignment"] == assignment), None)
     require(row is not None and tuple(row["objectives"]) == evaluation.objectives,
             f"{name}: independent exact reference disagrees")
-    require(tuple(exact["relaxed_lower_bound"]) == evaluation.lower_bound,
+    relaxed_lb = tuple(evaluation.diagnostics.get("relaxed_lower_bound", evaluation.lower_bound))
+    require(tuple(exact["relaxed_lower_bound"]) == relaxed_lb,
             f"{name}: independent relaxed bound disagrees")
+    require(evaluation.lower_bound[0] >= relaxed_lb[0] and evaluation.lower_bound[0] <= evaluation.objectives[0],
+            f"{name}: certified lower bound out of sound range")
     loads = Counter(assignment.values())
     return {"objectives": evaluation.objectives, "path_delays": row["path_delays"],
             "feasible": evaluation.feasible, "assigned_edges": len(assignment),

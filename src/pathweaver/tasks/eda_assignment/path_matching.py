@@ -3,6 +3,7 @@
 Matching costs only propose assignments. Incumbents are compared by exact (T,L).
 The verifier remains independent and recomputes coordinates, capacity and paths.
 """
+from collections import deque
 from dataclasses import dataclass
 from random import Random
 from time import monotonic
@@ -217,17 +218,17 @@ def solve(instance: Mapping[str, Any], budget: SolveBudget) -> Mapping[str, Any]
                 ])
                 if not adj[-1]:
                     return [graph.edges[i].id]
-            site_owner = {}
-            row_seen = set()
+            site_owner: dict[int, int] = {}
+            row_owner: dict[int, int] = {}
             for r in range(len(movable)):
                 _check(deadline)
                 visited_rows = {r}
                 visited_sites = set()
-                queue = [r]
+                queue = deque([r])
                 parent_site = {}
                 found_site = None
                 while queue and found_site is None:
-                    cur = queue.pop(0)
+                    cur = queue.popleft()
                     for j in adj[cur]:
                         if j in visited_sites:
                             continue
@@ -241,14 +242,14 @@ def solve(instance: Mapping[str, Any], budget: SolveBudget) -> Mapping[str, Any]
                             visited_rows.add(nxt)
                             queue.append(nxt)
                 if found_site is None:
-                    row_seen = visited_rows
-                    return [graph.edges[movable[idx]].id for idx in sorted(row_seen)]
-                # Augment along alternating path.
+                    return [graph.edges[movable[idx]].id for idx in sorted(visited_rows)]
+                # Augment along alternating path in O(path length).
                 cur_site = found_site
                 while cur_site is not None:
                     owner_row = parent_site[cur_site]
-                    prev_site = next((s for s, owner in site_owner.items() if owner == owner_row), None)
+                    prev_site = row_owner.get(owner_row)
                     site_owner[cur_site] = owner_row
+                    row_owner[owner_row] = cur_site
                     cur_site = prev_site
             return None
 

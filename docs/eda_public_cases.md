@@ -95,24 +95,4 @@ L 是跨层边几何和；固定的同层分支不计入 L，不能把 L 的绝�
 这是公开布局上的受限重分配，原布局提供固定单元和站点坐标。它不等于从网表重新布局，
 也没有执行电气时序、详细布线或物理签核。输入格式不受支持时，导入器会报错。
 
-## Bookshelf Python 接口
-
-`bookshelf.import_bookshelf` 也可读取作者的 `terminal.nodes`、`terminal.nets`、
-`terminal.pl` 目录。示例：
-
-```python
-from pathlib import Path
-from pathweaver.core.contracts import SolveBudget
-from pathweaver.tasks.eda_assignment import EdaAssignmentTaskPack
-from pathweaver.tasks.eda_assignment.bookshelf import import_bookshelf, audit_bookshelf_assignment
-
-directory = Path("data/bookshelf/terminal")
-bundle = import_bookshelf(directory, instance_id="bookshelf_case")
-pack = EdaAssignmentTaskPack()
-solution = pack.baseline(bundle["instance"], SolveBudget(30, 1000, 0))
-evaluation = pack.verify(bundle["instance"], solution)
-audit = audit_bookshelf_assignment(directory, solution, coordinate_scale=bundle["manifest"]["coordinate_scale"])
-```
-
-该适配器仅调整两侧各一个单元引脚的连接，图是独立的单边路径；T 表示最长选中连接。
-它不用于证明真实多边路径耦合。原始格式来自 [D2D-Placer](https://github.com/liW-J/D2D-Placer-With-Differentiable-Partitioner)。
+> 注：早期单边 Bookshelf 适配原型（D2D-Placer）已于 `0.2.0.dev1` 核心收缩中移除；当前公开套件聚焦 Open3DBench 真实多边路径耦合案例（AES / Ibex）与 `coupled_capacity_gap` 强冲突诊断。

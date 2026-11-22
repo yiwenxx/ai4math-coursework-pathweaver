@@ -242,9 +242,11 @@ def evaluate_prepared(
     cert_evidence = certificate.get("evidence")
     if attained or (certified and cert_evidence == "finite_optimal"):
         evidence = EvidenceLevel.FINITE_OPTIMAL
+        if certified and "T_lower_bound" in certificate:
+            lower_bound = (max(lower_bound[0], int(certificate["T_lower_bound"])), lower_bound[1])
     elif certified and cert_evidence == "certified_bound":
         evidence = EvidenceLevel.CERTIFIED_BOUND
-        lower_bound = (int(certificate["T_lower_bound"]), lower_bound[1])
+        lower_bound = (max(lower_bound[0], int(certificate["T_lower_bound"])), lower_bound[1])
     else:
         evidence = EvidenceLevel.EXPERIMENTAL
 
@@ -274,6 +276,7 @@ def evaluate_prepared(
         "critical_path": critical_path,
         "edges": edges_diag,
         "lower_bound_method": "independent_minimum_lengths_ignoring_site_capacity",
+        "relaxed_lower_bound": list(prepared.lower_bound),
         "lower_bound_attained": attained,
         "optimality_certificate": certificate,
         "optimality_method": (certificate.get("method") if certified

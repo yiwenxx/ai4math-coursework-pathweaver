@@ -202,14 +202,17 @@ def create_database(config, ordering, *, stepping_stone_weight: float = 0.45):
                 return others
             self._ensure_cache_valid()
             existing_ids = {p.id for p in others} | {parent.id}
-            # Look for a Rank-0 stepping stone that strictly improves at least one secondary/instance coordinate.
+            # For multi-objective vectors (e.g. (T, L)), improve secondary coordinates (i >= 1).
+            # For single-objective multi-instance vectors, check all instances starting at i = 0.
+            parent_objs = (getattr(parent, "metrics", None) or {}).get("exact_objectives") or ()
+            start_idx = 1 if len(parent_objs) >= 2 else 0
             stepping = []
             for p in self._programs.values():
                 if p.id in existing_ids or self._pareto_ranks.get(p.id, 1) != 0:
                     continue
                 pv = _exact_pareto_vector(p)
-                if pv is not None and any(pv[i] > parent_vec[i] for i in range(1, len(parent_vec))):
-                    stepping.append((max(pv[i] - parent_vec[i] for i in range(1, len(parent_vec))), p))
+                if pv is not None and any(pv[i] > parent_vec[i] for i in range(start_idx, len(parent_vec))):
+                    stepping.append((max(pv[i] - parent_vec[i] for i in range(start_idx, len(parent_vec))), p))
             if stepping:
                 stepping.sort(key=lambda item: (-item[0], item[1].id))
                 mate = stepping[0][1]

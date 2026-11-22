@@ -129,9 +129,10 @@ class ParadigmDirective:
 class StructuralStagnationMonitor:
     """Monitors exact-tuple progress and AST regime diversity across discovery attempts."""
 
-    def __init__(self, *, stagnation_window: int = 4, cooldown_steps: int = 2):
+    def __init__(self, *, stagnation_window: int = 4, cooldown_steps: int = 2, language: str = "auto"):
         self.stagnation_window = max(2, int(stagnation_window))
         self.cooldown_steps = max(1, int(cooldown_steps))
+        self.language = language
         self.best_objectives: tuple[int, ...] | None = None
         self.no_improve_streak: int = 0
         self.history: list[dict[str, Any]] = []
@@ -148,7 +149,7 @@ class StructuralStagnationMonitor:
         bound_gap: int | None = None,
         failure_summary: str = "",
     ) -> None:
-        regime = classify_algorithmic_regime(source)
+        regime = classify_algorithmic_regime(source, language=self.language)
         improved = False
         if objectives is not None:
             obj_tuple = tuple(int(v) for v in objectives)

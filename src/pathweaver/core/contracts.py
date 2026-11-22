@@ -173,12 +173,16 @@ def read_json(path: str | Path) -> Any:
     return json.loads(Path(path).read_text(encoding="utf-8"))
 
 
-def read_strict_json(path: str | Path) -> Any:
+def parse_strict_json(text: str) -> Any:
     return json.loads(
-        Path(path).read_text(encoding="utf-8-sig"),
+        text,
         object_pairs_hook=_unique_object,
         parse_constant=_reject_constant,
     )
+
+
+def read_strict_json(path: str | Path) -> Any:
+    return parse_strict_json(Path(path).read_text(encoding="utf-8-sig"))
 
 
 def write_json(value: Any, path: str | Path | None = None) -> None:

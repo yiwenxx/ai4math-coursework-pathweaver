@@ -24,3 +24,8 @@ PathWeaver integrates Lean 4 (`leanprover/lean4:v4.36.0`) across four layers wit
    - Locks the target proposition outside `_PathWeaverCandidate` (`build_locked_lean_module`) so candidates cannot weaken statements or spoof axioms.
    - Scores `(incomplete_flag, sorry_count, proof_bytes)` so partial `sorry` stubs (`HYPOTHESIS`) cannot beat or tie any complete proof `(0, 0, proof_bytes)` (`FORMAL_VERIFIED`).
    - Example zero-spend config: `configs/lean_proof.example.toml`; benchmarks: `benchmarks/lean_proof/`.
+
+## Trust Boundary
+
+- For `lean_proof`, the Lean 4 kernel checks the full proposition locked outside `_PathWeaverCandidate` and audits `#print axioms _pathweaver_verified_target`.
+- For `pathweaver lean export-cert --task eda`, Lean 4 formally certifies bipartite matching weak/strong duality and Hall pigeonhole infeasibility on the exported integer length and eligibility matrices; the geometric DAG-to-matrix reduction remains independently verified in Python (`prepare_verifier`). For `wvc` and `jsp158`, Lean 4 certifies the full cover/dual-packing and 4-AP conditions directly on the exported graph/coloring arrays.

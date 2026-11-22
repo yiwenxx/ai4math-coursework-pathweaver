@@ -176,6 +176,12 @@ def _strip_lean_comments_and_strings(source: str) -> str:
     return "".join(out)
 
 
+def extract_lean_theorem_names(source: str) -> list[str]:
+    """Extract declared top-level/namespaced Lean theorem/lemma names after stripping comments."""
+    cleaned = _strip_lean_comments_and_strings(source.lstrip("\ufeff"))
+    return re.findall(r"(?m)^\s*(?:private\s+|protected\s+)?(?:theorem|lemma)\s+([A-Za-z_][A-Za-z0-9_'.]*)\b", cleaned)
+
+
 def audit_formal_source(
     source: str,
     backend: str = "lean4",
@@ -378,7 +384,10 @@ def verify_formal_proof(
         )
 
     check_source = normalized
-    if theorem_name and f"#print axioms {theorem_name}" not in check_source:
+    if theorem_name and not re.search(
+        rf"(?m)^\s*#print\s+axioms\s+{re.escape(theorem_name)}\b",
+        _strip_lean_comments_and_strings(check_source),
+    ):
         check_source = check_source.rstrip() + f"\n\n#print axioms {theorem_name}\n"
 
     effective_project = project_dir

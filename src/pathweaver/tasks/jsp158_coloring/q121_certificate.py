@@ -14,11 +14,11 @@ rebuilds F_121 from scratch, verifies complete coverage of all 4,880 irreducible
 all 120 nonzero k's under the scaling symmetries, and checks that the listed c-values yield
 a valid (a, c) with J(a, c) != 0 for every single one of the 40,656 * 121 = 4,919,376 pairs.
 """
-from hashlib import sha256
 import json
 from pathlib import Path
 from typing import Any
 
+from pathweaver.core.contracts import digest
 from .ff_probe import QuadraticField
 
 SCHEMA_VERSION = 1
@@ -154,7 +154,7 @@ def generate_certificate() -> dict[str, Any]:
         "c_witnesses": cover_witnesses,
     }
     canonical = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
-    payload["payload_sha256"] = sha256(canonical).hexdigest()
+    payload["payload_sha256"] = digest(canonical)
     return payload
 
 
@@ -168,7 +168,7 @@ def verify_certificate(cert: dict[str, Any]) -> dict[str, Any]:
     expected_sha = cert.get("payload_sha256")
     if isinstance(expected_sha, str):
         stripped = {k: v for k, v in cert.items() if k != "payload_sha256"}
-        actual_sha = sha256(json.dumps(stripped, separators=(",", ":"), sort_keys=True).encode("utf-8")).hexdigest()
+        actual_sha = digest(json.dumps(stripped, separators=(",", ":"), sort_keys=True).encode("utf-8"))
         if actual_sha != expected_sha:
             raise ValueError("Certificate payload_sha256 mismatch")
 

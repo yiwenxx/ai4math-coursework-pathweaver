@@ -99,7 +99,12 @@ class MemoryStore:
             params.append(run_id)
         return [self._event(r) for r in self.connection.execute(sql + " ORDER BY e.sequence", params)]
 
-    def integrity_details(self, *, as_of: int | None = None) -> dict[str, dict[str, Any]]:
+    def integrity_details(
+        self,
+        *,
+        as_of: int | None = None,
+        records: list[ResearchEvent] | None = None,
+    ) -> dict[str, dict[str, Any]]:
         """Derive graded revocation and implicit context taint without overwriting history.
 
         Statuses:
@@ -111,7 +116,7 @@ class MemoryStore:
           prompt-window ``context_exposure_ids`` included a fatally revoked/tainted record.
         - ``active``: clean evidence and clean context exposure.
         """
-        records = self.snapshot(as_of=as_of)
+        records = self.snapshot(as_of=as_of) if records is None else records
         by_id = {e.record_id: e for e in records}
         invalid_meta: dict[str, dict[str, Any]] = {}
         for event in records:
@@ -282,22 +287,30 @@ class MemoryStore:
             if event.record_id != event.run_id:
                 raise ValueError("Run ID must equal its record ID")
             return
-        run = self.get(event.run_id)
+        records = self.snapshot()
+        by_id = {r.record_id: r for r in records}
+
+        def _require_rec(ref_id: str) -> ResearchEvent:
+            rec = by_id.get(ref_id)
+            if rec is None:
+                raise ValueError(f"Unknown record at this cutoff: {ref_id}")
+            return rec
+
+        run = _require_rec(event.run_id)
         if run.kind != "run":
             raise ValueError("run_id must reference a run")
-        states = self.integrity()
+        states = {rid: info["status"] for rid, info in self.integrity_details(records=records).items()}
         if event.kind != "invalidation" and states.get(run.record_id) != "active":
             raise ValueError("Run evidence has been invalidated; create a new run")
         evidential_ids = [
             ref for ref in event.references if ref not in set(event.context_exposures)
         ]
-        refs = [self.get(ref) for ref in evidential_ids]
+        refs = [_require_rec(ref) for ref in evidential_ids]
         if any(ref.run_id != event.run_id for ref in refs):
             raise ValueError("Evidence links must stay within a run; transfer advice must be re-evaluated")
         if event.record_id in event.references:
             raise ValueError("A record cannot reference itself")
         # Revisions must not introduce a dependency cycle.
-        by_id = {r.record_id: r for r in self.snapshot()}
         pending = list(event.references)
         seen: set[str] = set()
         while pending:
@@ -310,11 +323,11 @@ class MemoryStore:
                     pending.extend(by_id[ref].references)
         data = event.payload
         if event.kind == "invalidation":
-            target = self.get(data["target_id"])
+            target = _require_rec(data["target_id"])
             if target.kind == "invalidation":
                 raise ValueError("Invalidations cannot target another invalidation")
             if data.get("replacement_id"):
-                rep = self.get(data["replacement_id"])
+                rep = _require_rec(data["replacement_id"])
                 if rep.kind != target.kind or rep.record_id == target.record_id:
                     raise ValueError("replacement_id must reference a distinct record of the same kind")
                 if states.get(rep.record_id) in {"revoked", "needs_review"}:
@@ -327,19 +340,19 @@ class MemoryStore:
                 raise ValueError("Objective dimensions must match the run contract")
             if run.payload["provenance"] == "illustrative" and data["verification"] != "illustrative":
                 raise ValueError("Illustrative runs cannot supply verified research evidence")
-            if data.get("parent_id") and self.get(data["parent_id"]).kind != "attempt":
+            if data.get("parent_id") and _require_rec(data["parent_id"]).kind != "attempt":
                 raise ValueError("Invalid parent_id reference")
-            if data.get("hypothesis_id") and self.get(data["hypothesis_id"]).kind != "hypothesis":
+            if data.get("hypothesis_id") and _require_rec(data["hypothesis_id"]).kind != "hypothesis":
                 raise ValueError("Invalid hypothesis_id reference")
         if event.kind in {"hypothesis", "lesson", "route", "checkpoint"}:
-            if data.get("hypothesis_id") and self.get(data["hypothesis_id"]).kind != "hypothesis":
+            if data.get("hypothesis_id") and _require_rec(data["hypothesis_id"]).kind != "hypothesis":
                 raise ValueError("hypothesis_id must reference a hypothesis")
             for field in ("support_ids", "contradiction_ids", "evidence_ids"):
                 for ref_id in data.get(field) or ():
-                    if self.get(ref_id).kind != "attempt":
+                    if _require_rec(ref_id).kind != "attempt":
                         raise ValueError("Support, contradiction and evidence IDs must reference attempts")
         for ref_id in event.context_exposures:
-            if self.get(ref_id).kind not in {"attempt", "hypothesis", "lesson", "route"}:
+            if _require_rec(ref_id).kind not in {"attempt", "hypothesis", "lesson", "route"}:
                 raise ValueError("context_exposure_ids must reference attempt, hypothesis, lesson, or route records")
         if event.kind == "checkpoint" and not run.sequence <= data["through_sequence"] <= self.sequence:
             raise ValueError("Checkpoint cutoff must lie within recorded history")
@@ -352,7 +365,7 @@ class MemoryStore:
             admission = data.get("support_ids" if data["state"] == "supported" else "contradiction_ids", [])
             if not admission:
                 raise ValueError("Supported/refuted hypotheses need corresponding evidence")
-        if any(self.get(ref).payload.get("verification") != "verified" or states.get(ref) not in {"active", "degraded"} for ref in admission):
+        if any(_require_rec(ref).payload.get("verification") != "verified" or states.get(ref) not in {"active", "degraded"} for ref in admission):
             raise ValueError("Evidence admission requires active attempts from a trusted evaluator")
 
     def invalidate(
