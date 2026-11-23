@@ -177,9 +177,33 @@ def _strip_lean_comments_and_strings(source: str) -> str:
 
 
 def extract_lean_theorem_names(source: str) -> list[str]:
-    """Extract declared top-level/namespaced Lean theorem/lemma names after stripping comments."""
+    """Resolve declaration names for the axiom audit appended at module scope."""
     cleaned = _strip_lean_comments_and_strings(source.lstrip("\ufeff"))
-    return re.findall(r"(?m)^\s*(?:private\s+|protected\s+)?(?:theorem|lemma)\s+([A-Za-z_][A-Za-z0-9_'.]*)\b", cleaned)
+    identifier = r"[^\W\d][\w']*(?:\.[^\W\d][\w']*)*"
+    commands = re.compile(
+        rf"^[ \t]*(?:namespace[ \t]+(?P<namespace>{identifier})[ \t]*$"
+        rf"|(?P<section>(?:noncomputable[ \t]+)?section)(?:[ \t]+{identifier})?[ \t]*$"
+        rf"|(?P<end>end)(?:[ \t]+{identifier})?[ \t]*$"
+        rf"|(?:(?:private|protected)\s+)?(?:theorem|lemma)\s+(?P<theorem>{identifier}))",
+        re.MULTILINE,
+    )
+    scopes = []
+    names = []
+    for command in commands.finditer(cleaned.replace("\r\n", "\n")):
+        if command.lastgroup == "namespace":
+            scopes.append(command["namespace"])
+        elif command.lastgroup == "section":
+            scopes.append("")
+        elif command.lastgroup == "end":
+            if scopes:
+                scopes.pop()
+        else:
+            name = command["theorem"]
+            if name.startswith("_root_."):
+                names.append(name.removeprefix("_root_."))
+            else:
+                names.append(".".join(part for part in [*scopes, name] if part))
+    return names
 
 
 def audit_formal_source(
