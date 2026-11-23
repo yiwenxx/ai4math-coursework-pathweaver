@@ -1,5 +1,11 @@
 # Changelog
 
+## JSP-000158 Lean 4 finite bounds & obstruction release — 2026-11-23
+
+- Publish unconditional zero-`sorry` Lean 4 kernel theorems in `PathWeaverFormal` (21 public modules): `h(10^18) <= 132,158,016` and free-boundary extension `3p^2 + p + 1 = 1,004,830,828,672,875,053` (`CriticalSquareCertificate`, `CriticalSquareIntervals`, `CriticalSquareBoundary`, `FreePositionProduct`), `h(137) <= 9` (`NineColorCycle`, `NineColorInterval`), `h(98) <= 8` (`SmallIntervalWitnesses`), exact forced-rainbow threshold `19` (`ForcedRainbow`), and odd-power collision lift (`OddPower121`, `OddPowerCollisionLift`).
+- Publish `NONSEPARABLE-AND-NONPOLYNOMIAL-OBSTRUCTIONS.zh-CN.md` with Lean-certified coupled-affine, characteristic-5 nonpolynomial rigidity, radial cubic collapse, and quartic midpoint-cancellation identities, plus cyclic ABBA/3-color template verifiers (`cyclic.py`, `digit_lift.py`, `cyclic_sat.py`), `scripts/color_jsp158_cyclic_product.py`, `scripts/sweep_cyclic_abba.py`, and finite witness artifacts.
+- Keep unreviewed asymptotic `< 1/4` drafts out of the public release; no asymptotic exponent below `1/4` is claimed here.
+
 ## 0.2.0.dev1 — 2026-11-22
 
 - Integrate full-stack **Lean 4 formal verification**: bundled zero-Mathlib `PathWeaverFormal` library (`leanprover/lean4:v4.36.0`), `pathweaver lean` CLI (`info`, `check`, `verify-instance`, `export-cert`, `admit-claim`), EDA/WVC/JSP-000158 Lean certificate exporters, and statement-locked `lean_proof` TaskPack with `#print axioms` audit.

@@ -1,0 +1,20 @@
+{
+  "problem": "Erdos 160",
+  "modulus": 45,
+  "palette_size": 9,
+  "first_residue": 0,
+  "colors": [
+    3,2,5,4,4,1,5,2,2,8,6,8,2,5,3,
+    1,3,7,7,8,4,7,5,3,4,2,7,1,6,0,
+    4,0,8,5,0,6,6,7,0,6,3,0,8,1,1
+  ],
+  "cyclic_windows": {
+    "starts": 45,
+    "nonzero_differences": 44,
+    "three_colors": 1122,
+    "four_colors": 858,
+    "violations": 0
+  },
+  "free_positions": [],
+  "interval_length_with_nine_colors": 135
+}

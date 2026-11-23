@@ -1,0 +1,2464 @@
+{
+  "schema_version": 1,
+  "problem": "JSP-000158 / Erdos problem 160 — 1/4 Exponent Breakthrough Sweep & Theoretical Probes",
+  "elapsed_seconds": 82.25,
+  "track1_cyclic_r3_sweep": {
+    "palette_limit": 3,
+    "range": [
+      23,
+      85
+    ],
+    "total_moduli": 63,
+    "sat_count": 0,
+    "certified_unsat_count": 63,
+    "sat_moduli": [],
+    "unsat_moduli": [
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32,
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54,
+      55,
+      56,
+      57,
+      58,
+      59,
+      60,
+      61,
+      62,
+      63,
+      64,
+      65,
+      66,
+      67,
+      68,
+      69,
+      70,
+      71,
+      72,
+      73,
+      74,
+      75,
+      76,
+      77,
+      78,
+      79,
+      80,
+      81,
+      82,
+      83,
+      84,
+      85
+    ],
+    "crosses_quarter_threshold_found": false,
+    "records": [
+      {
+        "m": 23,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "double_radius_orbit_reduction",
+        "nodes_visited": 317,
+        "elapsed_seconds": 0.0,
+        "coset_quotients_tested": 1,
+        "reduction": {
+          "p": 23,
+          "r": 3,
+          "unsigned_group_size": 11,
+          "unsigned_orbit_length": 11,
+          "coset_count": 1,
+          "active_strata": [
+            1
+          ],
+          "min_monochromatic_pairs": 77,
+          "min_center_radii": 4,
+          "max_gap": 2
+        }
+      },
+      {
+        "m": 24,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "torsion_triangle_sr",
+        "nodes_visited": 133,
+        "verified_tree_nodes": 160,
+        "elapsed_seconds": 0.0,
+        "coset_quotients_tested": 7,
+        "certificate_verified": true
+      },
+      {
+        "m": 25,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "double_radius_orbit_reduction",
+        "nodes_visited": 1038,
+        "elapsed_seconds": 0.015,
+        "coset_quotients_tested": 1,
+        "reduction": {
+          "p": 25,
+          "r": 3,
+          "unsigned_group_size": 12,
+          "unsigned_orbit_length": 10,
+          "coset_count": 2,
+          "active_strata": [
+            1
+          ],
+          "min_monochromatic_pairs": 92,
+          "min_center_radii": 4,
+          "max_gap": 3
+        }
+      },
+      {
+        "m": 26,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "antipodal_edge_sr",
+        "nodes_visited": 2056,
+        "verified_tree_nodes": 3073,
+        "elapsed_seconds": 0.047,
+        "coset_quotients_tested": 1,
+        "certificate_verified": true
+      },
+      {
+        "m": 27,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "torsion_triangle_sr",
+        "nodes_visited": 536,
+        "verified_tree_nodes": 793,
+        "elapsed_seconds": 0.0,
+        "coset_quotients_tested": 2,
+        "certificate_verified": true
+      },
+      {
+        "m": 28,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "antipodal_edge_sr",
+        "nodes_visited": 2402,
+        "verified_tree_nodes": 3592,
+        "elapsed_seconds": 0.031,
+        "coset_quotients_tested": 5,
+        "certificate_verified": true
+      },
+      {
+        "m": 29,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "double_radius_orbit_reduction",
+        "nodes_visited": 692,
+        "elapsed_seconds": 0.015,
+        "coset_quotients_tested": 1,
+        "reduction": {
+          "p": 29,
+          "r": 3,
+          "unsigned_group_size": 14,
+          "unsigned_orbit_length": 14,
+          "coset_count": 1,
+          "active_strata": [
+            1
+          ],
+          "min_monochromatic_pairs": 126,
+          "min_center_radii": 5,
+          "max_gap": 2
+        }
+      },
+      {
+        "m": 30,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "torsion_triangle_sr",
+        "nodes_visited": 265,
+        "verified_tree_nodes": 358,
+        "elapsed_seconds": 0.0,
+        "coset_quotients_tested": 4,
+        "certificate_verified": true
+      },
+      {
+        "m": 31,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "double_radius_orbit_reduction",
+        "nodes_visited": 2699,
+        "elapsed_seconds": 0.062,
+        "coset_quotients_tested": 3,
+        "reduction": {
+          "p": 31,
+          "r": 3,
+          "unsigned_group_size": 15,
+          "unsigned_orbit_length": 15,
+          "coset_count": 1,
+          "active_strata": [
+            1
+          ],
+          "min_monochromatic_pairs": 145,
+          "min_center_radii": 5,
+          "max_gap": 3
+        }
+      },
+      {
+        "m": 32,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "antipodal_edge_sr",
+        "nodes_visited": 4180,
+        "verified_tree_nodes": 6259,
+        "elapsed_seconds": 0.079,
+        "coset_quotients_tested": 6,
+        "certificate_verified": true
+      },
+      {
+        "m": 33,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "torsion_triangle_sr",
+        "nodes_visited": 844,
+        "verified_tree_nodes": 1255,
+        "elapsed_seconds": 0.016,
+        "coset_quotients_tested": 5,
+        "certificate_verified": true
+      },
+      {
+        "m": 34,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "antipodal_edge_sr",
+        "nodes_visited": 5028,
+        "verified_tree_nodes": 7531,
+        "elapsed_seconds": 0.125,
+        "coset_quotients_tested": 0,
+        "certificate_verified": true
+      },
+      {
+        "m": 35,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "double_radius_orbit_reduction",
+        "nodes_visited": 4506,
+        "elapsed_seconds": 0.109,
+        "coset_quotients_tested": 9,
+        "reduction": {
+          "p": 35,
+          "r": 3,
+          "unsigned_group_size": 17,
+          "unsigned_orbit_length": 12,
+          "coset_count": 3,
+          "active_strata": [
+            1
+          ],
+          "min_monochromatic_pairs": 187,
+          "min_center_radii": 6,
+          "max_gap": 3
+        }
+      },
+      {
+        "m": 36,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "torsion_triangle_sr",
+        "nodes_visited": 369,
+        "verified_tree_nodes": 514,
+        "elapsed_seconds": 0.0,
+        "coset_quotients_tested": 5,
+        "certificate_verified": true
+      },
+      {
+        "m": 37,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "double_radius_orbit_reduction",
+        "nodes_visited": 5690,
+        "elapsed_seconds": 0.141,
+        "coset_quotients_tested": 2,
+        "reduction": {
+          "p": 37,
+          "r": 3,
+          "unsigned_group_size": 18,
+          "unsigned_orbit_length": 9,
+          "coset_count": 2,
+          "active_strata": [
+            1
+          ],
+          "min_monochromatic_pairs": 210,
+          "min_center_radii": 6,
+          "max_gap": 3
+        }
+      },
+      {
+        "m": 38,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "antipodal_edge_sr",
+        "nodes_visited": 7216,
+        "verified_tree_nodes": 10813,
+        "elapsed_seconds": 0.187,
+        "coset_quotients_tested": 2,
+        "certificate_verified": true
+      },
+      {
+        "m": 39,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "torsion_triangle_sr",
+        "nodes_visited": 1210,
+        "verified_tree_nodes": 1804,
+        "elapsed_seconds": 0.031,
+        "coset_quotients_tested": 9,
+        "certificate_verified": true
+      },
+      {
+        "m": 40,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "antipodal_edge_sr",
+        "nodes_visited": 8388,
+        "verified_tree_nodes": 12571,
+        "elapsed_seconds": 0.235,
+        "coset_quotients_tested": 11,
+        "certificate_verified": true
+      },
+      {
+        "m": 41,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "inherited_full_tree_certificate",
+        "crosses_quarter_threshold": false
+      },
+      {
+        "m": 42,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "torsion_triangle_sr",
+        "nodes_visited": 617,
+        "verified_tree_nodes": 886,
+        "elapsed_seconds": 0.016,
+        "coset_quotients_tested": 5,
+        "certificate_verified": true
+      },
+      {
+        "m": 43,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "double_radius_orbit_reduction",
+        "nodes_visited": 8619,
+        "elapsed_seconds": 0.265,
+        "coset_quotients_tested": 3,
+        "reduction": {
+          "p": 43,
+          "r": 3,
+          "unsigned_group_size": 21,
+          "unsigned_orbit_length": 21,
+          "coset_count": 1,
+          "active_strata": [
+            1
+          ],
+          "min_monochromatic_pairs": 287,
+          "min_center_radii": 7,
+          "max_gap": 3
+        }
+      },
+      {
+        "m": 44,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "antipodal_edge_sr",
+        "nodes_visited": 10374,
+        "verified_tree_nodes": 15550,
+        "elapsed_seconds": 0.36,
+        "coset_quotients_tested": 5,
+        "certificate_verified": true
+      },
+      {
+        "m": 45,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "torsion_triangle_sr",
+        "nodes_visited": 1972,
+        "verified_tree_nodes": 2947,
+        "elapsed_seconds": 0.063,
+        "coset_quotients_tested": 9,
+        "certificate_verified": true
+      },
+      {
+        "m": 46,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "subgroup_embedding_from_m23",
+        "divisor": 23,
+        "crosses_quarter_threshold": false
+      },
+      {
+        "m": 47,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "double_radius_orbit_reduction",
+        "nodes_visited": 6556,
+        "elapsed_seconds": 0.219,
+        "coset_quotients_tested": 1,
+        "reduction": {
+          "p": 47,
+          "r": 3,
+          "unsigned_group_size": 23,
+          "unsigned_orbit_length": 23,
+          "coset_count": 1,
+          "active_strata": [
+            1
+          ],
+          "min_monochromatic_pairs": 345,
+          "min_center_radii": 8,
+          "max_gap": 2
+        }
+      },
+      {
+        "m": 48,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "subgroup_embedding_from_m24",
+        "divisor": 24,
+        "crosses_quarter_threshold": false
+      },
+      {
+        "m": 49,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "double_radius_orbit_reduction",
+        "nodes_visited": 15969,
+        "elapsed_seconds": 0.563,
+        "coset_quotients_tested": 3,
+        "reduction": {
+          "p": 49,
+          "r": 3,
+          "unsigned_group_size": 24,
+          "unsigned_orbit_length": 21,
+          "coset_count": 2,
+          "active_strata": [
+            1
+          ],
+          "min_monochromatic_pairs": 376,
+          "min_center_radii": 8,
+          "max_gap": 3
+        }
+      },
+      {
+        "m": 50,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "subgroup_embedding_from_m25",
+        "divisor": 25,
+        "crosses_quarter_threshold": false
+      },
+      {
+        "m": 51,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "torsion_triangle_sr",
+        "nodes_visited": 2212,
+        "verified_tree_nodes": 3307,
+        "elapsed_seconds": 0.078,
+        "coset_quotients_tested": 8,
+        "certificate_verified": true
+      },
+      {
+        "m": 52,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "subgroup_embedding_from_m26",
+        "divisor": 26,
+        "crosses_quarter_threshold": false
+      },
+      {
+        "m": 53,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "double_radius_orbit_reduction",
+        "nodes_visited": 11387,
+        "elapsed_seconds": 0.422,
+        "coset_quotients_tested": 1,
+        "reduction": {
+          "p": 53,
+          "r": 3,
+          "unsigned_group_size": 26,
+          "unsigned_orbit_length": 26,
+          "coset_count": 1,
+          "active_strata": [
+            1
+          ],
+          "min_monochromatic_pairs": 442,
+          "min_center_radii": 9,
+          "max_gap": 2
+        }
+      },
+      {
+        "m": 54,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "subgroup_embedding_from_m27",
+        "divisor": 27,
+        "crosses_quarter_threshold": false
+      },
+      {
+        "m": 55,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "double_radius_orbit_reduction",
+        "nodes_visited": 28440,
+        "elapsed_seconds": 0.984,
+        "coset_quotients_tested": 9,
+        "reduction": {
+          "p": 55,
+          "r": 3,
+          "unsigned_group_size": 27,
+          "unsigned_orbit_length": 20,
+          "coset_count": 3,
+          "active_strata": [
+            1,
+            5
+          ],
+          "min_monochromatic_pairs": 477,
+          "min_center_radii": 9,
+          "max_gap": 2
+        }
+      },
+      {
+        "m": 56,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "subgroup_embedding_from_m28",
+        "divisor": 28,
+        "crosses_quarter_threshold": false
+      },
+      {
+        "m": 57,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "torsion_triangle_sr",
+        "nodes_visited": 2676,
+        "verified_tree_nodes": 4003,
+        "elapsed_seconds": 0.094,
+        "coset_quotients_tested": 8,
+        "certificate_verified": true
+      },
+      {
+        "m": 58,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "subgroup_embedding_from_m29",
+        "divisor": 29,
+        "crosses_quarter_threshold": false
+      },
+      {
+        "m": 59,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "double_radius_orbit_reduction",
+        "nodes_visited": 19374,
+        "elapsed_seconds": 0.703,
+        "coset_quotients_tested": 1,
+        "reduction": {
+          "p": 59,
+          "r": 3,
+          "unsigned_group_size": 29,
+          "unsigned_orbit_length": 29,
+          "coset_count": 1,
+          "active_strata": [
+            1
+          ],
+          "min_monochromatic_pairs": 551,
+          "min_center_radii": 10,
+          "max_gap": 2
+        }
+      },
+      {
+        "m": 60,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "subgroup_embedding_from_m30",
+        "divisor": 30,
+        "crosses_quarter_threshold": false
+      },
+      {
+        "m": 61,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "double_radius_orbit_reduction",
+        "nodes_visited": 21338,
+        "elapsed_seconds": 0.828,
+        "coset_quotients_tested": 3,
+        "reduction": {
+          "p": 61,
+          "r": 3,
+          "unsigned_group_size": 30,
+          "unsigned_orbit_length": 5,
+          "coset_count": 6,
+          "active_strata": [
+            1
+          ],
+          "min_monochromatic_pairs": 590,
+          "min_center_radii": 10,
+          "max_gap": 2
+        }
+      },
+      {
+        "m": 62,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "subgroup_embedding_from_m31",
+        "divisor": 31,
+        "crosses_quarter_threshold": false
+      },
+      {
+        "m": 63,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "torsion_triangle_sr",
+        "nodes_visited": 2894,
+        "verified_tree_nodes": 4330,
+        "elapsed_seconds": 0.109,
+        "coset_quotients_tested": 15,
+        "certificate_verified": true
+      },
+      {
+        "m": 64,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "subgroup_embedding_from_m32",
+        "divisor": 32,
+        "crosses_quarter_threshold": false
+      },
+      {
+        "m": 65,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "double_radius_orbit_reduction",
+        "nodes_visited": 54604,
+        "elapsed_seconds": 2.188,
+        "coset_quotients_tested": 13,
+        "reduction": {
+          "p": 65,
+          "r": 3,
+          "unsigned_group_size": 32,
+          "unsigned_orbit_length": 12,
+          "coset_count": 5,
+          "active_strata": [
+            1
+          ],
+          "min_monochromatic_pairs": 672,
+          "min_center_radii": 11,
+          "max_gap": 3
+        }
+      },
+      {
+        "m": 66,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "subgroup_embedding_from_m33",
+        "divisor": 33,
+        "crosses_quarter_threshold": false
+      },
+      {
+        "m": 67,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "double_radius_orbit_reduction",
+        "nodes_visited": 29054,
+        "elapsed_seconds": 1.188,
+        "coset_quotients_tested": 3,
+        "reduction": {
+          "p": 67,
+          "r": 3,
+          "unsigned_group_size": 33,
+          "unsigned_orbit_length": 11,
+          "coset_count": 3,
+          "active_strata": [
+            1
+          ],
+          "min_monochromatic_pairs": 715,
+          "min_center_radii": 11,
+          "max_gap": 2
+        }
+      },
+      {
+        "m": 68,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "subgroup_embedding_from_m34",
+        "divisor": 34,
+        "crosses_quarter_threshold": false
+      },
+      {
+        "m": 69,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "subgroup_embedding_from_m23",
+        "divisor": 23,
+        "crosses_quarter_threshold": false
+      },
+      {
+        "m": 70,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "subgroup_embedding_from_m35",
+        "divisor": 35,
+        "crosses_quarter_threshold": false
+      },
+      {
+        "m": 71,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "double_radius_orbit_reduction",
+        "nodes_visited": 32860,
+        "elapsed_seconds": 1.453,
+        "coset_quotients_tested": 3,
+        "reduction": {
+          "p": 71,
+          "r": 3,
+          "unsigned_group_size": 35,
+          "unsigned_orbit_length": 35,
+          "coset_count": 1,
+          "active_strata": [
+            1
+          ],
+          "min_monochromatic_pairs": 805,
+          "min_center_radii": 12,
+          "max_gap": 2
+        }
+      },
+      {
+        "m": 72,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "subgroup_embedding_from_m24",
+        "divisor": 24,
+        "crosses_quarter_threshold": false
+      },
+      {
+        "m": 73,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "double_radius_orbit_reduction",
+        "nodes_visited": 80582,
+        "elapsed_seconds": 3.547,
+        "coset_quotients_tested": 2,
+        "reduction": {
+          "p": 73,
+          "r": 3,
+          "unsigned_group_size": 36,
+          "unsigned_orbit_length": 6,
+          "coset_count": 6,
+          "active_strata": [
+            1
+          ],
+          "min_monochromatic_pairs": 852,
+          "min_center_radii": 12,
+          "max_gap": 3
+        }
+      },
+      {
+        "m": 74,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "subgroup_embedding_from_m37",
+        "divisor": 37,
+        "crosses_quarter_threshold": false
+      },
+      {
+        "m": 75,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "subgroup_embedding_from_m25",
+        "divisor": 25,
+        "crosses_quarter_threshold": false
+      },
+      {
+        "m": 76,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "subgroup_embedding_from_m38",
+        "divisor": 38,
+        "crosses_quarter_threshold": false
+      },
+      {
+        "m": 77,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "double_radius_orbit_reduction",
+        "nodes_visited": 85687,
+        "elapsed_seconds": 3.922,
+        "coset_quotients_tested": 11,
+        "reduction": {
+          "p": 77,
+          "r": 3,
+          "unsigned_group_size": 38,
+          "unsigned_orbit_length": 30,
+          "coset_count": 3,
+          "active_strata": [
+            1,
+            7
+          ],
+          "min_monochromatic_pairs": 950,
+          "min_center_radii": 13,
+          "max_gap": 2
+        }
+      },
+      {
+        "m": 78,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "subgroup_embedding_from_m26",
+        "divisor": 26,
+        "crosses_quarter_threshold": false
+      },
+      {
+        "m": 79,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "double_radius_orbit_reduction",
+        "nodes_visited": 79463,
+        "elapsed_seconds": 3.797,
+        "coset_quotients_tested": 3,
+        "reduction": {
+          "p": 79,
+          "r": 3,
+          "unsigned_group_size": 39,
+          "unsigned_orbit_length": 39,
+          "coset_count": 1,
+          "active_strata": [
+            1
+          ],
+          "min_monochromatic_pairs": 1001,
+          "min_center_radii": 13,
+          "max_gap": 3
+        }
+      },
+      {
+        "m": 80,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "subgroup_embedding_from_m40",
+        "divisor": 40,
+        "crosses_quarter_threshold": false
+      },
+      {
+        "m": 81,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "subgroup_embedding_from_m27",
+        "divisor": 27,
+        "crosses_quarter_threshold": false
+      },
+      {
+        "m": 82,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "subgroup_embedding_from_m41",
+        "divisor": 41,
+        "crosses_quarter_threshold": false
+      },
+      {
+        "m": 83,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "inherited_full_tree_certificate",
+        "crosses_quarter_threshold": false
+      },
+      {
+        "m": 84,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "subgroup_embedding_from_m28",
+        "divisor": 28,
+        "crosses_quarter_threshold": false
+      },
+      {
+        "m": 85,
+        "r": 3,
+        "status": "UNSAT",
+        "mechanism": "double_radius_orbit_reduction",
+        "nodes_visited": 114797,
+        "elapsed_seconds": 5.625,
+        "coset_quotients_tested": 14,
+        "reduction": {
+          "p": 85,
+          "r": 3,
+          "unsigned_group_size": 42,
+          "unsigned_orbit_length": 16,
+          "coset_count": 4,
+          "active_strata": [
+            1,
+            5
+          ],
+          "min_monochromatic_pairs": 1162,
+          "min_center_radii": 14,
+          "max_gap": 2
+        }
+      }
+    ]
+  },
+  "track1_cyclic_r4_sweep": {
+    "palette_limit": 4,
+    "range": [
+      82,
+      260
+    ],
+    "total_moduli": 179,
+    "total_quotients_checked": 3300,
+    "sat_count": 0,
+    "sat_moduli": [],
+    "quotient_unsat_moduli_count": 151,
+    "threshold_window_257_260": [
+      {
+        "m": 257,
+        "r": 4,
+        "status": "COSET_NO_QUOTIENT_FOUND",
+        "tested_quotient_count": 0,
+        "tested_quotients": []
+      },
+      {
+        "m": 258,
+        "r": 4,
+        "status": "COSET_UNSAT",
+        "tested_quotient_count": 20,
+        "tested_quotients": [
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 42,
+            "orbit_count": 12,
+            "generator_sample": [
+              1,
+              7,
+              13,
+              19
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 42,
+            "orbit_count": 12,
+            "generator_sample": [
+              1,
+              11,
+              13,
+              17
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 21,
+            "orbit_count": 18,
+            "generator_sample": [
+              1,
+              13,
+              25,
+              31
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 14,
+            "orbit_count": 28,
+            "generator_sample": [
+              1,
+              11,
+              35,
+              41
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 14,
+            "orbit_count": 24,
+            "generator_sample": [
+              1,
+              85,
+              97,
+              121
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 7,
+            "orbit_count": 42,
+            "generator_sample": [
+              1,
+              97,
+              121,
+              127
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 3,
+            "self_conflict": false
+          }
+        ]
+      },
+      {
+        "m": 259,
+        "r": 4,
+        "status": "COSET_NO_QUOTIENT_FOUND",
+        "tested_quotient_count": 78,
+        "tested_quotients": [
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 36,
+            "orbit_count": 10,
+            "generator_sample": [
+              1,
+              2,
+              4,
+              8
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 36,
+            "orbit_count": 9,
+            "generator_sample": [
+              1,
+              4,
+              6,
+              9
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 36,
+            "orbit_count": 9,
+            "generator_sample": [
+              1,
+              5,
+              6,
+              17
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 36,
+            "orbit_count": 11,
+            "generator_sample": [
+              1,
+              6,
+              13,
+              20
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 36,
+            "orbit_count": 14,
+            "generator_sample": [
+              1,
+              8,
+              15,
+              22
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 36,
+            "orbit_count": 10,
+            "generator_sample": [
+              1,
+              8,
+              25,
+              29
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          }
+        ]
+      },
+      {
+        "m": 260,
+        "r": 4,
+        "status": "COSET_NO_QUOTIENT_FOUND",
+        "tested_quotient_count": 72,
+        "tested_quotients": [
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 48,
+            "orbit_count": 16,
+            "generator_sample": [
+              1,
+              9,
+              17,
+              21
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 24,
+            "orbit_count": 30,
+            "generator_sample": [
+              1,
+              11,
+              21,
+              31
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 12,
+            "orbit_count": 35,
+            "generator_sample": [
+              1,
+              3,
+              9,
+              27
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 12,
+            "orbit_count": 27,
+            "generator_sample": [
+              1,
+              7,
+              47,
+              49
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 12,
+            "orbit_count": 32,
+            "generator_sample": [
+              1,
+              9,
+              17,
+              29
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 12,
+            "orbit_count": 31,
+            "generator_sample": [
+              1,
+              9,
+              23,
+              29
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          }
+        ]
+      }
+    ],
+    "crosses_quarter_threshold_found": false,
+    "highlighted_records": [
+      {
+        "m": 82,
+        "r": 4,
+        "status": "COSET_UNSAT",
+        "tested_quotient_count": 2,
+        "tested_quotients": [
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 5,
+            "orbit_count": 18,
+            "generator_sample": [
+              1,
+              37,
+              51,
+              57
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 24,
+            "self_conflict": false
+          },
+          {
+            "kind": "antipodal_equivariant",
+            "subgroup_order": 5,
+            "orbit_count": 18,
+            "status": "UNSAT",
+            "nodes_visited": 4,
+            "self_conflict": false
+          }
+        ]
+      },
+      {
+        "m": 83,
+        "r": 4,
+        "status": "COSET_UNSAT",
+        "tested_quotient_count": 2,
+        "tested_quotients": [
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 41,
+            "orbit_count": 3,
+            "generator_sample": [
+              1,
+              3,
+              4,
+              7
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "antipodal_equivariant",
+            "subgroup_order": 41,
+            "orbit_count": 3,
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          }
+        ]
+      },
+      {
+        "m": 84,
+        "r": 4,
+        "status": "COSET_UNSAT",
+        "tested_quotient_count": 20,
+        "tested_quotients": [
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 12,
+            "orbit_count": 16,
+            "generator_sample": [
+              1,
+              5,
+              13,
+              17
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 12,
+            "orbit_count": 18,
+            "generator_sample": [
+              1,
+              13,
+              19,
+              25
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 6,
+            "orbit_count": 20,
+            "generator_sample": [
+              1,
+              5,
+              17,
+              25
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 6,
+            "orbit_count": 21,
+            "generator_sample": [
+              1,
+              11,
+              23,
+              25
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 6,
+            "orbit_count": 24,
+            "generator_sample": [
+              1,
+              13,
+              25,
+              37
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 6,
+            "orbit_count": 21,
+            "generator_sample": [
+              1,
+              19,
+              25,
+              31
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          }
+        ]
+      },
+      {
+        "m": 85,
+        "r": 4,
+        "status": "COSET_UNSAT",
+        "tested_quotient_count": 24,
+        "tested_quotients": [
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 16,
+            "orbit_count": 7,
+            "generator_sample": [
+              1,
+              3,
+              7,
+              9
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 16,
+            "orbit_count": 10,
+            "generator_sample": [
+              1,
+              6,
+              11,
+              16
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 16,
+            "orbit_count": 7,
+            "generator_sample": [
+              1,
+              9,
+              12,
+              16
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 16,
+            "orbit_count": 8,
+            "generator_sample": [
+              1,
+              14,
+              16,
+              21
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 8,
+            "orbit_count": 12,
+            "generator_sample": [
+              1,
+              2,
+              4,
+              8
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 8,
+            "orbit_count": 12,
+            "generator_sample": [
+              1,
+              4,
+              16,
+              42
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          }
+        ]
+      },
+      {
+        "m": 86,
+        "r": 4,
+        "status": "COSET_UNSAT",
+        "tested_quotient_count": 6,
+        "tested_quotients": [
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 21,
+            "orbit_count": 6,
+            "generator_sample": [
+              1,
+              9,
+              11,
+              13
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 7,
+            "orbit_count": 14,
+            "generator_sample": [
+              1,
+              11,
+              21,
+              35
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 7,
+            "self_conflict": false
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 3,
+            "orbit_count": 30,
+            "generator_sample": [
+              1,
+              49,
+              79
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 2391,
+            "self_conflict": false
+          },
+          {
+            "kind": "antipodal_equivariant",
+            "subgroup_order": 21,
+            "orbit_count": 6,
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "antipodal_equivariant",
+            "subgroup_order": 7,
+            "orbit_count": 14,
+            "status": "UNSAT",
+            "nodes_visited": 4,
+            "self_conflict": false
+          },
+          {
+            "kind": "antipodal_equivariant",
+            "subgroup_order": 3,
+            "orbit_count": 30,
+            "status": "UNSAT",
+            "nodes_visited": 4,
+            "self_conflict": false
+          }
+        ]
+      },
+      {
+        "m": 87,
+        "r": 4,
+        "status": "COSET_UNSAT",
+        "tested_quotient_count": 14,
+        "tested_quotients": [
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 28,
+            "orbit_count": 5,
+            "generator_sample": [
+              1,
+              2,
+              4,
+              7
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 28,
+            "orbit_count": 6,
+            "generator_sample": [
+              1,
+              4,
+              7,
+              10
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 14,
+            "orbit_count": 9,
+            "generator_sample": [
+              1,
+              4,
+              7,
+              13
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 14,
+            "orbit_count": 10,
+            "generator_sample": [
+              1,
+              7,
+              16,
+              20
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 7,
+            "orbit_count": 15,
+            "generator_sample": [
+              1,
+              7,
+              16,
+              25
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 43,
+            "self_conflict": false
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 4,
+            "orbit_count": 23,
+            "generator_sample": [
+              1,
+              17,
+              28,
+              41
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          }
+        ]
+      },
+      {
+        "m": 88,
+        "r": 4,
+        "status": "COSET_UNSAT",
+        "tested_quotient_count": 16,
+        "tested_quotients": [
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 10,
+            "orbit_count": 15,
+            "generator_sample": [
+              1,
+              3,
+              9,
+              25
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 10,
+            "orbit_count": 18,
+            "generator_sample": [
+              1,
+              5,
+              9,
+              25
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 10,
+            "orbit_count": 14,
+            "generator_sample": [
+              1,
+              9,
+              13,
+              21
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 10,
+            "orbit_count": 15,
+            "generator_sample": [
+              1,
+              9,
+              15,
+              23
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 10,
+            "orbit_count": 16,
+            "generator_sample": [
+              1,
+              9,
+              17,
+              25
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 10,
+            "orbit_count": 13,
+            "generator_sample": [
+              1,
+              9,
+              19,
+              25
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          }
+        ]
+      },
+      {
+        "m": 89,
+        "r": 4,
+        "status": "COSET_UNSAT",
+        "tested_quotient_count": 2,
+        "tested_quotients": [
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 11,
+            "orbit_count": 9,
+            "generator_sample": [
+              1,
+              2,
+              4,
+              8
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "antipodal_equivariant",
+            "subgroup_order": 11,
+            "orbit_count": 9,
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          }
+        ]
+      },
+      {
+        "m": 90,
+        "r": 4,
+        "status": "COSET_UNSAT",
+        "tested_quotient_count": 14,
+        "tested_quotients": [
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 12,
+            "orbit_count": 20,
+            "generator_sample": [
+              1,
+              7,
+              13,
+              19
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 12,
+            "orbit_count": 16,
+            "generator_sample": [
+              1,
+              17,
+              19,
+              23
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 6,
+            "orbit_count": 30,
+            "generator_sample": [
+              1,
+              11,
+              31,
+              41
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 6,
+            "orbit_count": 30,
+            "generator_sample": [
+              1,
+              19,
+              31,
+              49
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 4,
+            "orbit_count": 28,
+            "generator_sample": [
+              1,
+              17,
+              19,
+              53
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 4,
+            "orbit_count": 36,
+            "generator_sample": [
+              1,
+              19,
+              37,
+              73
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          }
+        ]
+      },
+      {
+        "m": 255,
+        "r": 4,
+        "status": "COSET_UNSAT",
+        "tested_quotient_count": 40,
+        "tested_quotients": [
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 64,
+            "orbit_count": 12,
+            "generator_sample": [
+              1,
+              4,
+              7,
+              13
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 32,
+            "orbit_count": 20,
+            "generator_sample": [
+              1,
+              11,
+              16,
+              26
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 16,
+            "orbit_count": 21,
+            "generator_sample": [
+              1,
+              7,
+              16,
+              19
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 16,
+            "orbit_count": 25,
+            "generator_sample": [
+              1,
+              11,
+              16,
+              41
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 16,
+            "orbit_count": 23,
+            "generator_sample": [
+              1,
+              14,
+              16,
+              29
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 16,
+            "orbit_count": 21,
+            "generator_sample": [
+              1,
+              16,
+              19,
+              22
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          }
+        ]
+      },
+      {
+        "m": 256,
+        "r": 4,
+        "status": "COSET_UNSAT",
+        "tested_quotient_count": 14,
+        "tested_quotients": [
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 64,
+            "orbit_count": 15,
+            "generator_sample": [
+              1,
+              3,
+              9,
+              11
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 64,
+            "orbit_count": 16,
+            "generator_sample": [
+              1,
+              5,
+              9,
+              13
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 32,
+            "orbit_count": 25,
+            "generator_sample": [
+              1,
+              7,
+              17,
+              23
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 32,
+            "orbit_count": 28,
+            "generator_sample": [
+              1,
+              9,
+              17,
+              25
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 16,
+            "orbit_count": 41,
+            "generator_sample": [
+              1,
+              15,
+              33,
+              47
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 16,
+            "orbit_count": 48,
+            "generator_sample": [
+              1,
+              17,
+              33,
+              49
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          }
+        ]
+      },
+      {
+        "m": 257,
+        "r": 4,
+        "status": "COSET_NO_QUOTIENT_FOUND",
+        "tested_quotient_count": 0,
+        "tested_quotients": []
+      },
+      {
+        "m": 258,
+        "r": 4,
+        "status": "COSET_UNSAT",
+        "tested_quotient_count": 20,
+        "tested_quotients": [
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 42,
+            "orbit_count": 12,
+            "generator_sample": [
+              1,
+              7,
+              13,
+              19
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 42,
+            "orbit_count": 12,
+            "generator_sample": [
+              1,
+              11,
+              13,
+              17
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 21,
+            "orbit_count": 18,
+            "generator_sample": [
+              1,
+              13,
+              25,
+              31
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 14,
+            "orbit_count": 28,
+            "generator_sample": [
+              1,
+              11,
+              35,
+              41
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 14,
+            "orbit_count": 24,
+            "generator_sample": [
+              1,
+              85,
+              97,
+              121
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 7,
+            "orbit_count": 42,
+            "generator_sample": [
+              1,
+              97,
+              121,
+              127
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 3,
+            "self_conflict": false
+          }
+        ]
+      },
+      {
+        "m": 259,
+        "r": 4,
+        "status": "COSET_NO_QUOTIENT_FOUND",
+        "tested_quotient_count": 78,
+        "tested_quotients": [
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 36,
+            "orbit_count": 10,
+            "generator_sample": [
+              1,
+              2,
+              4,
+              8
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 36,
+            "orbit_count": 9,
+            "generator_sample": [
+              1,
+              4,
+              6,
+              9
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 36,
+            "orbit_count": 9,
+            "generator_sample": [
+              1,
+              5,
+              6,
+              17
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 36,
+            "orbit_count": 11,
+            "generator_sample": [
+              1,
+              6,
+              13,
+              20
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 36,
+            "orbit_count": 14,
+            "generator_sample": [
+              1,
+              8,
+              15,
+              22
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 36,
+            "orbit_count": 10,
+            "generator_sample": [
+              1,
+              8,
+              25,
+              29
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          }
+        ]
+      },
+      {
+        "m": 260,
+        "r": 4,
+        "status": "COSET_NO_QUOTIENT_FOUND",
+        "tested_quotient_count": 72,
+        "tested_quotients": [
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 48,
+            "orbit_count": 16,
+            "generator_sample": [
+              1,
+              9,
+              17,
+              21
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 24,
+            "orbit_count": 30,
+            "generator_sample": [
+              1,
+              11,
+              21,
+              31
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 12,
+            "orbit_count": 35,
+            "generator_sample": [
+              1,
+              3,
+              9,
+              27
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 12,
+            "orbit_count": 27,
+            "generator_sample": [
+              1,
+              7,
+              47,
+              49
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 12,
+            "orbit_count": 32,
+            "generator_sample": [
+              1,
+              9,
+              17,
+              29
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          },
+          {
+            "kind": "H_invariant",
+            "subgroup_order": 12,
+            "orbit_count": 31,
+            "generator_sample": [
+              1,
+              9,
+              23,
+              29
+            ],
+            "status": "UNSAT",
+            "nodes_visited": 1,
+            "self_conflict": true
+          }
+        ]
+      }
+    ]
+  },
+  "track2_theoretical_probes": {
+    "coupled_affine_on_005_trace_shear_f25": {
+      "field": "F_25",
+      "total_z_progressions": 600,
+      "nonzero_det_progressions": 0,
+      "nonzero_det_ratio": 0.0,
+      "has_abba": true,
+      "cramer_witness": null,
+      "degenerate_witness": {
+        "z0": [
+          1,
+          0
+        ],
+        "h": [
+          0,
+          1
+        ],
+        "y0": [
+          0,
+          0
+        ],
+        "eta": [
+          1,
+          4
+        ]
+      }
+    },
+    "coupled_affine_norm_scaling_on_005_f25": {
+      "field": "F_25",
+      "total_z_progressions": 600,
+      "nonzero_det_progressions": 480,
+      "nonzero_det_ratio": 0.8,
+      "has_abba": true,
+      "cramer_witness": {
+        "z0": [
+          0,
+          0
+        ],
+        "h": [
+          0,
+          1
+        ],
+        "y0": [
+          3,
+          3
+        ],
+        "eta": [
+          2,
+          1
+        ],
+        "det": [
+          0,
+          2
+        ],
+        "colors": [
+          [
+            3,
+            2
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            2,
+            4
+          ],
+          [
+            3,
+            2
+          ]
+        ]
+      },
+      "degenerate_witness": {
+        "z0": [
+          1,
+          1
+        ],
+        "h": [
+          0,
+          1
+        ],
+        "y0": [
+          0,
+          0
+        ],
+        "eta": [
+          0,
+          0
+        ]
+      }
+    },
+    "non_affine_shifted_pole_bijection_f25": {
+      "field": "F_25",
+      "has_abba": true,
+      "witness": {
+        "y0": [
+          4,
+          4
+        ],
+        "eta": [
+          4,
+          4
+        ],
+        "z0": [
+          0,
+          1
+        ],
+        "h": [
+          0,
+          1
+        ],
+        "colors": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    },
+    "multiplicative_character_shear_f25_mod2": {
+      "field": "F_25",
+      "has_zero_third_difference": false,
+      "witness": null,
+      "primitive_root": [
+        1,
+        2
+      ],
+      "coset_modulus": 2
+    },
+    "multiplicative_character_shear_f25_mod3": {
+      "field": "F_25",
+      "has_zero_third_difference": false,
+      "witness": null,
+      "primitive_root": [
+        1,
+        2
+      ],
+      "coset_modulus": 3
+    },
+    "multiplicative_character_shear_f49_mod2": {
+      "field": "F_49",
+      "has_zero_third_difference": false,
+      "witness": null,
+      "primitive_root": [
+        1,
+        1
+      ],
+      "coset_modulus": 2
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "problem": "Erdos 160",
+  "domain": {"first": 1, "last": 137},
+  "palette_size": 9,
+  "word": "01372150287467204601514355816526288633074045738372101287467204601514355816526288633074045738372101287467204601514355816526288633074045756",
+  "construction": {
+    "cyclic_seed": "325441522868253137784753427160408506670630811",
+    "base_at_zero_based_i": "cyclic_seed[(31*i+23) % 45]",
+    "changes_i_old_new": [[0,3,0],[1,8,1],[6,0,5],[7,1,0],[135,3,5],[136,8,6]]
+  },
+  "positive_step_progressions": {"total": 3060, "three_colors": 1725, "four_colors": 1335, "fewer_than_three": 0}
+}

@@ -1,6 +1,11 @@
 # Current status
 
-Updated: 2026-11-21 · Public development version: `0.2.0.dev1`
+Updated: 2026-11-23 · Public development version: `0.2.0.dev1`
+
+## JSP-000158 Lean 4 finite bounds & obstruction update (2026-11-22 — 2026-11-23)
+
+- Added 17 zero-`sorry` Lean 4 modules to `PathWeaverFormal` (21 public modules total), unconditionally certifying `h(10^18) <= 132,158,016` (extended to `3p^2 + p + 1 = 1,004,830,828,672,875,053`), `h(137) <= 9`, `h(98) <= 8`, exact forced-rainbow threshold `19`, odd-power collision lifts (`OddPower121`, `OddPowerCollisionLift`), and core identities of the nonseparable/nonpolynomial obstruction manuscript (`NONSEPARABLE-AND-NONPOLYNOMIAL-OBSTRUCTIONS.zh-CN.md`).
+- Added `pathweaver jsp158 verify-template` / `verify-digit-lift`, pure-stdlib finite colorer `scripts/color_jsp158_cyclic_product.py`, cyclic SAT sweep `scripts/sweep_cyclic_abba.py`, and machine-checked witness datasets (`jsp158_quarter_breakthrough_sweep.json`, `jsp158_nine_color_cycle/template.json`, `jsp158_nine_color_interval/witness.json`, `jsp158_forced_rainbow/certificate.py`).
 
 ## Core contraction (2026-11-21)
 
@@ -20,4 +25,4 @@ To maximize research agility and eliminate unnecessary ceremony, non-essential o
 
 - EDA metrics are geometric proxies on fixed placements (not electrical STA or full-chip PPA).
 - Live LLM discovery ablations (`H1`/`H2`) require user-configured local/remote LLM endpoints; zero-spend frozen preparation is verified for both `eda_assignment` and `weighted_vertex_cover`.
-- JSP-000158 asymptotic proof drafts (`NOTE.zh-CN.md`, `FROBENIUS-OBSTRUCTIONS.zh-CN.md`) remain AI-assisted candidate manuscripts awaiting external peer review, formalization, and priority checks; no exponent below `1/4` is claimed.
+- JSP-000158 asymptotic proof drafts (`NOTE.zh-CN.md`, `FROBENIUS-OBSTRUCTIONS.zh-CN.md`, `NONSEPARABLE-AND-NONPOLYNOMIAL-OBSTRUCTIONS.zh-CN.md`) remain AI-assisted manuscripts awaiting external peer review and priority checks; no asymptotic exponent below `1/4` is claimed in this public release.

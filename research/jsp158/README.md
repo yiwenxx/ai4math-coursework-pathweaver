@@ -1,8 +1,47 @@
 # JSP-000158：研究进展与候选证明
 
-**更新于 2026-11-11 · 四项等差数列至少三色 · 对应 Erdős 问题 160**
+**更新于 2026-11-23 · 四项等差数列至少三色 · 对应 Erdős 问题 160**
 
-[Frobenius 障碍完整稿](FROBENIUS-OBSTRUCTIONS.zh-CN.md) · [原定量细化稿](NOTE.zh-CN.md) · [审阅与查新状态](REVIEW.md) · [有限构造数据](finite-colorings.json) · [引用](CITATION.md)
+[耦合置换与非多项式刚性新稿](NONSEPARABLE-AND-NONPOLYNOMIAL-OBSTRUCTIONS.zh-CN.md) · [Frobenius 障碍完整稿](FROBENIUS-OBSTRUCTIONS.zh-CN.md) · [原定量细化稿](NOTE.zh-CN.md) · [审阅与查新状态](REVIEW.md) · [有限构造数据](finite-colorings.json) · [引用](CITATION.md)
+
+## 2026-11-23：Lean 4 内核无条件证明的有限上界与结构阈值
+
+本轮公开同步了一批已完成 **Lean 4 内核认证（零 Mathlib、零 `sorry`，仅依赖标准公理 `propext`/`Classical.choice`/`Quot.sound`）** 的显式有限上界、循环模板提升与区间结构阈值定理（渐近主指数相关草稿暂留私有研究仓待外部审阅，不在公开仓宣称）：
+
+| 成果 | 精确结论 | Lean 4 内核模块与复现入口 |
+|---|---|---|
+| **$h(10^{18}) \le 132\,158\,016$ 及自由边界延拓** | 取素数 $p=578\,743\,129$，两位按 $x^{50\,343}\bmod p$ 着色（零并入色 $1$，每位 $11\,496$ 色），覆盖任意平移区间 $N \le 3p^2$；独立改色零列后，相同 $132\,158\,016$ 色覆盖长度达 **$3p^2+p+1=1\,004\,830\,828\,672\,875\,053$** | `CriticalSquareCertificate.lean`、`CriticalSquareIntervals.lean`、`CriticalSquareBoundary.lean`、`FreePositionProduct.lean`、`OddPowerCollisionLift.lean` |
+| **$h(137) \le 9$ 与模 45 循环模板** | 模 45 的九色循环表满足 $h(45n)\le 9h(n)$；三周期重排并改色 6 处即得 137 项区间见证（全量 3,060 条非平凡 4-AP 均至少三色） | `NineColorCycle.lean`、`NineColorInterval.lean`、`results/jsp158_nine_color_cycle/template.json`、`results/jsp158_nine_color_interval/witness.json` |
+| **$h(98) \le 8$ 与公开 $h(77) \le 7$ 复现** | 8 色覆盖 98 项区间（1,552 条非平凡 4-AP 全量核验通过），并内核复现 Canli 的 77 项 7 色公开见证 | `SmallIntervalWitnesses.lean` |
+| **必现四色进程的精确阈值 $= 19$** | 任意合法 4-AP 至少三色区间着色中，首次强制出现四色 4-AP 的精确最小长度为 **19**（长度 18 存在全部 45 条进程恰用三色的见证） | `ForcedRainbow.lean`、`results/jsp158_forced_rainbow/certificate.py` |
+| **一般递推与奇次幂碰撞提升** | 证明零位可自由改色递推 $h(pn+1)\le r h(n)$、两位循环提升、尾部乘积以及 $q=121$ 奇次幂核引理 | `TwoDigitCyclicLift.lean`、`CyclicTailProduct.lean`、`OddPower121.lean`、`QuadraticDenominator.lean`、`Jsp158Distance.lean`、`QuarterTurn.lean` |
+
+复现命令（无需第三方 Python 依赖；Lean 核验需本地 `lake`）：
+
+```bash
+# 显式有限上界着色与预算查询
+python scripts/color_jsp158_cyclic_product.py --interval-size 1000000000000000000 --budget
+python scripts/color_jsp158_cyclic_product.py --interval-size 137 --budget
+python scripts/color_jsp158_cyclic_product.py --interval-size 98 --budget
+python results/jsp158_forced_rainbow/certificate.py
+pathweaver jsp158 verify-template --three-colors results/jsp158_nine_color_cycle/template.json
+
+# Lean 4 内核构建与核验（零 Mathlib、零 sorry）
+cd formal && lake build PathWeaverFormal
+```
+
+## 2026-11-22：耦合置换、非多项式刚性与有理/陪集染色的统一分类与障碍
+
+新增稿 [NONSEPARABLE-AND-NONPOLYNOMIAL-OBSTRUCTIONS.zh-CN.md](NONSEPARABLE-AND-NONPOLYNOMIAL-OBSTRUCTIONS.zh-CN.md) 针对前稿留下的外色耦合置换 $\pi_{(x,z)}$、非多项式/分圆高次剩余特征构造、无零点有理分母剪切、向量值四次多项式及循环乘性陪集模板给出六条分类与障碍定理，核心代数恒等式与循环核验规约已由 **Lean 4 内核（`PathWeaverFormal`）无公理认证**：
+
+| 定理 | 精确结论 | 证据与认证状态 |
+|---|---|---|
+| **定理 A（$z$-耦合仿射置换二分定理）** | 对 $\pi_x(\sigma(x,z)y+F(x,z))$，$D_\sigma = \sigma_0\Delta^3\sigma - (\Delta^2\sigma)(\sigma_3-\sigma_0)$：$\mathbb{F}_p$-仿射 $\sigma$ 严格保持 $\Delta^3 F \neq 0$ 条件不变；$2 \le k \le (p+1)/2$ 次多项式切片给出非零首项 $-2(k-1)k(k+1)c_k^2 t^{2k-3}$，对**任意**函数 $F$ 强制产生 Cramer ABBA 见证 | 解析证明 + **Lean 4 内核认证** (`coupled_affine_det_forces_abba`, `coupled_affine_det_diff_identity`, `coupled_fp_affine_row_proportional`) |
+| **定理 B（特征 $5$ 集合论非多项式剪切刚性）** | **不假设 $F$ 为多项式**，任意集合论映射 $F: \mathbb{F}_5^d \to \mathbb{F}_5$ 使 $\pi(y+F(z))$ 无 ABBA **当且仅当** $F$ 是各向异性三次多项式，从而必有 **$d \le 3$**（彻底排除 $\mathbb{F}_5 \times \mathbb{F}_5^4$ 上的非多项式纯剪切） | 解析证明 + **Lean 4 内核认证** (`f5_fourth_diff_sum_identity`, `f5_nonzero_orbit_forces_zero_slope`) |
+| **定理 C（射影不变权重与分圆特征径向坍缩）** | $d=1$（$\mathbb{F}_{25}, \mathbb{F}_{49}$）上 $15/19/27$ 次分圆特征剪切 $W(\chi_m(z))z^3$ 全量核验无 ABBA；$d \ge 4$ 时任意 $\mathbb{F}_p^\times$-射影不变权重 $\Omega(z)$ 与非齐次三次式 $A(z)$ 沿径向 $z_i=(1+i)h$ 坍缩为 $\Delta_h^3[\Omega A](h) = 6\Omega(h)A_3(h)$，迫使 $d \le 3$ | 解析证明 + **Lean 4 内核认证** (`projective_weight_radial_cubic_collapse`) + `ff_probe.py` 全量枚举 |
+| **定理 D（加法分母有理剪切 $d \le 2$ 尖锐降维）** | $\pi(y+A(z)/(\gamma+T(z)))$ ($T \neq 0, \deg A \le 3$) 无 ABBA **当且仅当** $A(w) \neq 0$ ($\forall w$) 且 $A_3(h) \neq 0$ ($\forall h \neq 0$)，将维数上限从 $d=3$ **严格压降至 $d=2$** 且逐秩可达 | 完整解析证明（有限集碰撞引理 + 齐次化 Chevalley–Warning） |
+| **定理 E（循环乘性陪集障碍与 $q=121$ 闭合）** | 含 $-1\pmod m$ 的乘性子群（含 $m=257$ 全部非平凡乘性子群）在 $(-3,-1,1,3)$ 处恒有 ABBA；完成 $(m,3), m\in[23,85]$ 全部 $63$ 个模数 `UNSAT` 闭合（结合 LRAT 反证排除全量 $m\ge 23$, $s(2;3)=22$）及 $(m,4)$ 的 $3,300$ 个陪集商 `UNSAT`；$4,919,376$ 方程零信任证书正式闭合 $q=121$ 混合曲线引理 | **Lean 4 内核认证** (`checkCyclicABBAFree_sound`) + 零信任证书 (`q121_mixed_curve_certificate.json`, `jsp158_quarter_breakthrough_sweep.json`) |
+| **定理 F（向量值四次多项式中点偶抵消与 $D \le 4r$ 障碍）** | 任意维数 $r \ge 1$ 的四次多项式向量染色 $P: \mathbb{F}_p^D \to \mathbb{F}_p^r$ 在中点 $(u_0-3v, u_0-v, u_0+v, u_0+3v)$ 上偶次项 $Q_4, Q_{2,u_0}$ 恒等消去，奇次泰勒总次数和为 $4r$，故 $D \ge 4r+1$ 时逐中点迫使 ABBA | 解析证明 + **Lean 4 内核认证** (`quartic_midpoint_even_cancellation`) |
 
 ## 2026-11-11：Frobenius 构造族的统一障碍
 

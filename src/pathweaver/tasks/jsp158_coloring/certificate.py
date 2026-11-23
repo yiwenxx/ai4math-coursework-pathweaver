@@ -15,6 +15,7 @@ from .q121_certificate import verify_certificate as verify_q121
 
 LOWER_BOUND_TREE_METHOD = "coloring_lower_bound_tree"
 Q121_METHOD = "q121_mixed_curve_certificate"
+CYCLIC_ABBA_UNSAT_METHOD = "cyclic_abba_unsat_tree"
 
 
 def _has_4ap_violation(assign: dict[int, int], aps_on_subset: list[tuple[int, int, int, int]]) -> bool:
@@ -122,6 +123,188 @@ def _verify_lower_bound_tree(
     }
 
 
+def _independent_cyclic_propagate(
+    m: int,
+    r: int,
+    aps: list[tuple[int, int, int, int]],
+    assign: dict[int, int],
+) -> tuple[dict[int, int], bool]:
+    """Solver-independent fixed-point 4-AP unit propagation on Z/mZ."""
+    full_mask = (1 << r) - 1
+    dom = [full_mask] * m
+    closed = dict(assign)
+    for pos, col in closed.items():
+        if type(pos) is not int or not 0 <= pos < m or type(col) is not int or not 0 <= col < r:
+            return closed, True
+        dom[pos] = 1 << col
+
+    changed = True
+    while changed:
+        changed = False
+        for p0, p1, p2, p3 in aps:
+            c0 = closed.get(p0)
+            c1 = closed.get(p1)
+            c2 = closed.get(p2)
+            c3 = closed.get(p3)
+
+            outer_equal = (p0 == p3) or (c0 is not None and c0 == c3)
+            inner_equal = (p1 == p2) or (c1 is not None and c1 == c2)
+
+            if outer_equal and inner_equal:
+                return closed, True
+
+            # 2d == 0 mod m: (p0, p1, p0, p1), so c0 == c1 makes both outer and inner equal
+            if p0 == p2 and p1 == p3:
+                if c0 is not None and c1 is not None and c0 == c1:
+                    return closed, True
+                if c0 is not None and c1 is None:
+                    bit = 1 << c0
+                    if dom[p1] & bit:
+                        dom[p1] &= ~bit
+                        if dom[p1] == 0:
+                            return closed, True
+                        if (dom[p1] & (dom[p1] - 1)) == 0:
+                            closed[p1] = dom[p1].bit_length() - 1
+                            changed = True
+                elif c1 is not None and c0 is None:
+                    bit = 1 << c1
+                    if dom[p0] & bit:
+                        dom[p0] &= ~bit
+                        if dom[p0] == 0:
+                            return closed, True
+                        if (dom[p0] & (dom[p0] - 1)) == 0:
+                            closed[p0] = dom[p0].bit_length() - 1
+                            changed = True
+                continue
+
+            if outer_equal:
+                if c1 is not None and c2 is None:
+                    bit = 1 << c1
+                    if dom[p2] & bit:
+                        dom[p2] &= ~bit
+                        if dom[p2] == 0:
+                            return closed, True
+                        if (dom[p2] & (dom[p2] - 1)) == 0:
+                            closed[p2] = dom[p2].bit_length() - 1
+                            changed = True
+                elif c2 is not None and c1 is None:
+                    bit = 1 << c2
+                    if dom[p1] & bit:
+                        dom[p1] &= ~bit
+                        if dom[p1] == 0:
+                            return closed, True
+                        if (dom[p1] & (dom[p1] - 1)) == 0:
+                            closed[p1] = dom[p1].bit_length() - 1
+                            changed = True
+
+            if inner_equal:
+                if c0 is not None and c3 is None:
+                    bit = 1 << c0
+                    if dom[p3] & bit:
+                        dom[p3] &= ~bit
+                        if dom[p3] == 0:
+                            return closed, True
+                        if (dom[p3] & (dom[p3] - 1)) == 0:
+                            closed[p3] = dom[p3].bit_length() - 1
+                            changed = True
+                elif c3 is not None and c0 is None:
+                    bit = 1 << c3
+                    if dom[p0] & bit:
+                        dom[p0] &= ~bit
+                        if dom[p0] == 0:
+                            return closed, True
+                        if (dom[p0] & (dom[p0] - 1)) == 0:
+                            closed[p0] = dom[p0].bit_length() - 1
+                            changed = True
+
+    return closed, False
+
+
+def verify_cyclic_abba_unsat_tree(
+    cert: Mapping[str, Any],
+    *,
+    max_nodes: int = 250_000,
+) -> dict[str, Any]:
+    """Zero-trust independent verification of a cyclic ABBA-free UNSAT proof tree."""
+    allowed = {
+        "schema_version", "method", "m", "palette_limit",
+        "symmetry_mode", "root_assign", "use_canonical_sr", "tree",
+    }
+    if set(cert) != allowed or cert.get("schema_version") != 1 or cert.get("method") != CYCLIC_ABBA_UNSAT_METHOD:
+        raise ValueError("Malformed cyclic_abba_unsat_tree certificate header")
+
+    m = cert["m"]
+    r = cert["palette_limit"]
+    if type(m) is not int or m < 2 or type(r) is not int or r < 1:
+        raise ValueError("Invalid m or palette_limit in cyclic_abba_unsat_tree")
+
+    sym = cert["symmetry_mode"]
+    raw_root = cert["root_assign"]
+    if not isinstance(raw_root, list):
+        raise ValueError("root_assign must be a list of [pos, color] pairs")
+    root_assign = {int(pair[0]): int(pair[1]) for pair in raw_root}
+
+    if sym == "canonical_sr":
+        if root_assign != {0: 0}:
+            raise ValueError("canonical_sr requires root_assign == {0: 0}")
+    elif sym == "torsion_triangle_sr":
+        if m % 3 != 0 or r < 3 or root_assign != {0: 0, m // 3: 1, (2 * m) // 3: 2}:
+            raise ValueError("Invalid torsion_triangle_sr root_assign")
+    elif sym == "antipodal_edge_sr":
+        if m % 2 != 0 or r < 2 or root_assign != {0: 0, m // 2: 1}:
+            raise ValueError("Invalid antipodal_edge_sr root_assign")
+    elif sym != "custom_root":
+        raise ValueError(f"Unknown symmetry_mode: {sym!r}")
+
+    use_sr = bool(cert["use_canonical_sr"])
+    aps = [(a, (a + d) % m, (a + 2 * d) % m, (a + 3 * d) % m) for a in range(m) for d in range(1, m)]
+
+    root_fresh = max(root_assign.values(), default=-1) + 1
+    visited = 0
+    stack: list[tuple[Mapping[str, Any], dict[int, int], int]] = [(cert["tree"], root_assign, root_fresh)]
+
+    while stack:
+        node, assign, next_fresh = stack.pop()
+        visited += 1
+        if visited > max_nodes:
+            raise ValueError(f"Cyclic ABBA UNSAT tree exceeds {max_nodes} nodes")
+        if not isinstance(node, Mapping):
+            raise ValueError("Tree node must be an object")
+
+        closed, conflict = _independent_cyclic_propagate(m, r, aps, assign)
+        kind = node.get("kind")
+        if kind == "conflict":
+            if not conflict:
+                raise ValueError("Leaf marked conflict does not reach conflict under 4-AP unit propagation")
+        elif kind == "branch":
+            if conflict:
+                continue
+            pos = node.get("pos")
+            children = node.get("children")
+            if type(pos) is not int or not 0 <= pos < m or pos in closed:
+                raise ValueError(f"Invalid or already-assigned branch position: {pos!r}")
+            eff_fresh = max(next_fresh, max(closed.values(), default=-1) + 1) if use_sr else r
+            expected_count = min(r, eff_fresh + 1) if use_sr else r
+            if not isinstance(children, list) or len(children) != expected_count:
+                raise ValueError(f"Branch at pos={pos} must cover all {expected_count} colors")
+            for col_val, child in enumerate(children):
+                nxt = dict(closed)
+                nxt[pos] = col_val
+                stack.append((child, nxt, max(eff_fresh, col_val + 1)))
+        else:
+            raise ValueError(f"Unknown cyclic UNSAT tree node kind: {kind!r}")
+
+    return {
+        "status": "verified",
+        "method": CYCLIC_ABBA_UNSAT_METHOD,
+        "evidence": EvidenceLevel.CERTIFIED_BOUND.value,
+        "m": m,
+        "palette_limit": r,
+        "symmetry_mode": sym,
+        "verified_nodes": visited,
+    }
+
+
 def check_certificate(
     n: int,
     certificate: Any,
@@ -142,6 +325,8 @@ def check_certificate(
             return _verify_lower_bound_tree(
                 n, certificate, color_count=color_count, base_lower_bound=base_lower_bound,
             )
+        if method == CYCLIC_ABBA_UNSAT_METHOD:
+            return verify_cyclic_abba_unsat_tree(certificate)
         if method == Q121_METHOD or certificate.get("problem") == "jsp158_q121_mixed_frobenius_cubic_norm_curve":
             res = verify_q121(dict(certificate))
             return {

@@ -1,5 +1,29 @@
 # 研究稿审阅说明与创新性状态
 
+## 2026-11-23：Lean 4 内核无条件认证的有限上界与结构阈值
+
+本轮公开同步的有限上界与区间阈值定理全部经由 **Lean 4 内核（`PathWeaverFormal`，零 Mathlib、零 `sorry`）** 机械核验：
+- **大区间显式有限上界**：`CriticalSquareCertificate.lean`、`CriticalSquareIntervals.lean` 与 `CriticalSquareBoundary.lean` 直接在内核中核验 $p=578\,743\,129$ 的全部 $50\,342$ 个非平凡 $50\,343$ 次单位根碰撞窗口与零列自由改色延拓，确立 $h(10^{18})\le 132\,158\,016$ 及任意平移区间 $N\le 3p^2+p+1=1\,004\,830\,828\,672\,875\,053$ 的无条件有限上界；公理检查仅含标准公理 `[propext, Classical.choice, Quot.sound]`。
+- **小区间显式上界与结构阈值**：`NineColorCycle.lean`、`NineColorInterval.lean`、`SmallIntervalWitnesses.lean` 与 `ForcedRainbow.lean` 分别在内核中确立模 45 九色循环表、$h(137)\le 9$、$h(98)\le 8$、$h(77)\le 7$（归属 Canli 公开见证）以及合法着色必现四色 4-AP 的精确长度阈值 $19$。
+- **配套离线复现脚本与证书**：`scripts/color_jsp158_cyclic_product.py`（纯标准库）、`results/jsp158_nine_color_cycle/template.json`、`results/jsp158_nine_color_interval/witness.json`、`results/jsp158_forced_rainbow/certificate.py` 及 `pathweaver jsp158 verify-template --three-colors`。
+- **边界声明**：本轮公开内容仅覆盖上述已由 Lean 4 内核无条件核验的有限上界、循环提升与结构阈值；不包含尚未完成外部同行评审的渐近主指数草稿，也不宣称公开仓已确立 $\alpha < 1/4$ 的渐近上界或原题一般下界。
+
+## 2026-11-22：耦合置换、非多项式刚性与有理/陪集染色分类稿
+
+[完整稿](NONSEPARABLE-AND-NONPOLYNOMIAL-OBSTRUCTIONS.zh-CN.md)针对 2026-11-11 稿留下的外色耦合置换 $\pi_{(x,z)}$、非多项式/分圆高次剩余特征构造、无零点加法分母有理剪切、向量值四次多项式及循环乘性陪集模板建立六条定理（定理 A–F）。其中：
+- **Lean 4 内核形式化认证（`PathWeaverFormal`，零 Mathlib、零 `sorry`、`#print axioms` 审计为空）**已覆盖：
+  1. 耦合仿射置换的 Cramer 迫使恒等式 `coupled_affine_det_forces_abba`、通用差分分解恒等式 `coupled_affine_det_diff_identity` 与 $\mathbb{F}_p$-仿射分支秩一比例恒等式 `coupled_fp_affine_row_proportional`；
+  2. 特征 $5$ 四阶差分线性求和恒等式 `f5_fourth_diff_sum_identity` 与非零轨道零斜率刚性引理 `f5_nonzero_orbit_forces_zero_slope`；
+  3. 射影不变权重与非齐次三次多项式的径向坍缩恒等式 `projective_weight_radial_cubic_collapse`；
+  4. 向量值四次多项式中点偶次抵消恒等式 `quartic_midpoint_even_cancellation`；
+  5. 循环群 $\mathbb{Z}/m\mathbb{Z}$ 上 ABBA 自由的形式化规约与可执行判定可靠性定理 `checkCyclicABBAFree_sound`、`checkColorsBelow_sound` 及 $m=22, r=3$ 证书 `jsp158_cyclic_m22_r3_valid`。
+- **零信任独立机检证书**已覆盖：
+  1. `q=121` 混合曲线全覆盖证书 `results/q121_mixed_curve_certificate.json`（4,880 个降次不可约三次式、40,656 组参数、4,919,376 个方程，SHA256 `6e6ff98dcd4595dad3634a495176e5ba60fa321ef515c4a865413ef6ead3d8fd`），正式闭合 2026-11-11 稿第 10 节在 $q=121$ 的 $d=1, 2$ 分支；
+  2. 循环模板扫描与理论探测数据包 `results/jsp158_quarter_breakthrough_sweep.json`（含 $(m,3), m \in [23,85]$ 全部 $63$ 个模数的 `UNSAT` 关闭、$(m,4), m \in [82,260]$ 的 $3,300$ 个乘性/反演陪集商全量 UNSAT 反证，以及 $\mathbb{F}_{25}, \mathbb{F}_{49}$ 一维分圆特征正例）；
+  3. 三色区间与循环极值 LRAT 独立重放 `scripts/certify_jsp158_three_color.py`（`interval70.lrat.gz` 与 `cyclic23.lrat.gz`，配合周期延拓确立 $s(2;3)=22$）。
+
+外部同行评议与文献绝对优先权仍保持开放审阅状态；未宣称构造出 $\alpha < 1/4$ 的渐近上界或原题的一般下界。
+
 ## 2026-11-11：Frobenius 障碍稿
 
 [完整稿](FROBENIUS-OBSTRUCTIONS.zh-CN.md)给出双系数主体和多项线性化测量扩展的推导。AI助手已逐步检查普通三次曲线的几何整性与正规化、移动截距公式、逐素域直线到全局二次的单项式论证、Chevalley–Warning 的变量/方程计数、循环下降后的混合项不可约性和显式点数阈值，以及加法测量的真实差分接合。后续审查还核对了二元指数和的光滑性条件、迹伴随、导数退化线上符合陪集条件的点数和低次数多项曲线的判别式/极点，支持撤去秩限制及补齐指定多项族的低维范围。检查没有发现需撤回的逻辑缺口，但不等于外部数学审阅、形式化认证或优先权确认。

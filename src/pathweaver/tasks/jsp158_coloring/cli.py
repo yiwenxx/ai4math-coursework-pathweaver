@@ -2,9 +2,11 @@
 from dataclasses import asdict
 from pathlib import Path
 
-from pathweaver.core.contracts import SolveBudget, read_strict_json, write_json
+from pathweaver.core.contracts import SolveBudget, parse_strict_json, read_strict_json, write_json
 
 from . import Jsp158ColoringTaskPack
+from .cyclic import MAX_TEMPLATE_BYTES, MAX_TEMPLATE_SIZE, verify_template
+from .digit_lift import verify_digit_lift
 from .model import MAX_N, parse_instance
 
 
@@ -24,6 +26,18 @@ def add_jsp158_parser(subparsers):
     verify = commands.add_parser("verify", help="Independently enumerate every four-term AP")
     verify.add_argument("instance", type=Path)
     verify.add_argument("solution", type=Path)
+    for name, help_text in (
+        ("verify-template", "Check cyclic ABBA or three-color separation and the digit-lift threshold"),
+        ("verify-digit-lift", "Check ABBA separation for integer digit products of every length"),
+    ):
+        template = commands.add_parser(name, help=help_text)
+        template.add_argument("template", type=Path, help=(
+            f"JSON object with colors or palettes of length 2 to {MAX_TEMPLATE_SIZE}, at most {MAX_TEMPLATE_BYTES} bytes"
+        ))
+        if name == "verify-template":
+            template.add_argument("--three-colors", action="store_true", help=(
+                "Require at least three labels on every nonzero-step cyclic four-term progression"
+            ))
 
 
 def run_jsp158_command(args, parser):
@@ -31,6 +45,24 @@ def run_jsp158_command(args, parser):
     try:
         if args.jsp158_command == "generate":
             write_json(pack.generate(seed=args.seed, size=args.size), args.output)
+        elif args.jsp158_command in ("verify-template", "verify-digit-lift"):
+            try:
+                with args.template.open("rb") as source:
+                    raw = source.read(MAX_TEMPLATE_BYTES + 1)
+                if len(raw) > MAX_TEMPLATE_BYTES:
+                    raise ValueError(f"template exceeds {MAX_TEMPLATE_BYTES} bytes")
+                template = parse_strict_json(raw.decode("utf-8-sig"))
+                if args.jsp158_command == "verify-template":
+                    result = verify_template(template, three_colors=getattr(args, "three_colors", False))
+                else:
+                    result = verify_digit_lift(template)
+            except (ValueError, RecursionError) as error:
+                write_json({"valid": False, "improves_quarter_via_lift": False,
+                            "improves_five_over_twenty_one_via_lift": False, "error": str(error)})
+                parser.exit(1)
+            write_json(result)
+            if not result["valid"]:
+                parser.exit(1)
         else:
             instance = read_strict_json(args.instance)
             parse_instance(instance)

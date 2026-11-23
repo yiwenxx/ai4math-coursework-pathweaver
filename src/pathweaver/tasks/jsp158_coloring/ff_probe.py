@@ -146,3 +146,206 @@ def probe_rational_shear(
     result = probe_third_difference_zero(field, ratio)
     result["root_free_verified"] = True
     return result
+
+
+def probe_coupled_affine_permutation(
+    field: QuadraticField,
+    sigma_fn: Callable[[QuadraticField, int], int],
+    f_fn: Callable[[QuadraticField, int], int],
+) -> dict[str, object]:
+    """Exhaustively test z-coupled affine permutation C(y, z) = sigma(z) * y + F(z) over F_q x F_q.
+
+    Along z_i = z0 + i*h (h != 0) and y_i = y0 + i*eta, ABBA (C_0 == C_3 and C_1 == C_2) is a
+    2x2 linear system for (y0, eta) with determinant:
+        D_sigma(z0, h) = (s3 - s0)*(2*s2 - s1) - 3*s3*(s2 - s1).
+    Whenever D_sigma(z0, h) != 0, Cramer's rule yields a unique ABBA witness (y0, eta) regardless
+    of F(z) (even if F is non-polynomial).
+    """
+    q = field.q
+    add, sub, mul, inv = field.add, field.sub, field.mul, field.inv
+    two = 2 % field.p
+    three = 3 % field.p
+
+    sigmas = [sigma_fn(field, z) for z in range(q)]
+    if any(s == 0 for s in sigmas):
+        raise ValueError("sigma(z) must be nonzero on F_q for y -> sigma(z)*y + F(z) to be a bijection")
+    f_vals = [f_fn(field, z) for z in range(q)]
+
+    total_pairs = 0
+    nonzero_det_pairs = 0
+    first_det_witness: dict[str, object] | None = None
+    first_degenerate_witness: dict[str, object] | None = None
+
+    for h in range(1, q):
+        h2 = add[h][h]
+        h3 = add[h2][h]
+        for z0 in range(q):
+            total_pairs += 1
+            z1 = add[z0][h]
+            z2 = add[z0][h2]
+            z3 = add[z0][h3]
+
+            s0, s1, s2, s3 = sigmas[z0], sigmas[z1], sigmas[z2], sigmas[z3]
+            f0, f1, f2, f3 = f_vals[z0], f_vals[z1], f_vals[z2], f_vals[z3]
+
+            s3_m_s0 = sub[s3][s0]
+            two_s2_m_s1 = sub[mul[two][s2]][s1]
+            three_s3 = mul[three][s3]
+            s2_m_s1 = sub[s2][s1]
+
+            # D = (s3 - s0)*(2*s2 - s1) - 3*s3*(s2 - s1)
+            det = sub[mul[s3_m_s0][two_s2_m_s1]][mul[three_s3][s2_m_s1]]
+            if det != 0:
+                nonzero_det_pairs += 1
+                if first_det_witness is None:
+                    inv_det = inv[det]
+                    # Y0 = (f0 - f3)*(2*s2 - s1) + 3*s3*(f2 - f1)
+                    y0_num = add[mul[sub[f0][f3]][two_s2_m_s1]][mul[three_s3][sub[f2][f1]]]
+                    # H = (s0 - s3)*(f2 - f1) + (s2 - s1)*(f3 - f0)
+                    eta_num = add[mul[sub[s0][s3]][sub[f2][f1]]][mul[s2_m_s1][sub[f3][f0]]]
+                    y0 = mul[y0_num][inv_det]
+                    eta = mul[eta_num][inv_det]
+
+                    c_vals = [
+                        add[mul[sigmas[z_i]][add[y0][mul[i % field.p][eta]]]][f_vals[z_i]]
+                        for i, z_i in enumerate((z0, z1, z2, z3))
+                    ]
+                    if not (c_vals[0] == c_vals[3] and c_vals[1] == c_vals[2]):
+                        raise RuntimeError("Cramer determinant witness failed independent ABBA check")
+                    first_det_witness = {
+                        "z0": field.coords(z0),
+                        "h": field.coords(h),
+                        "y0": field.coords(y0),
+                        "eta": field.coords(eta),
+                        "det": field.coords(det),
+                        "colors": [field.coords(c) for c in c_vals],
+                    }
+            elif first_degenerate_witness is None:
+                # Check if singular system still admits a solution (y0, eta)
+                rhs1 = sub[f0][f3]
+                rhs2 = sub[f1][f2]
+                for y0 in range(q):
+                    lhs1_base = mul[s3_m_s0][y0]
+                    lhs2_base = mul[s2_m_s1][y0]
+                    found = False
+                    for eta in range(q):
+                        if (
+                            add[lhs1_base][mul[three_s3][eta]] == rhs1
+                            and add[lhs2_base][mul[two_s2_m_s1][eta]] == rhs2
+                        ):
+                            first_degenerate_witness = {
+                                "z0": field.coords(z0),
+                                "h": field.coords(h),
+                                "y0": field.coords(y0),
+                                "eta": field.coords(eta),
+                            }
+                            found = True
+                            break
+                    if found:
+                        break
+
+    has_abba = (first_det_witness is not None) or (first_degenerate_witness is not None)
+    return {
+        "field": f"F_{q}",
+        "total_z_progressions": total_pairs,
+        "nonzero_det_progressions": nonzero_det_pairs,
+        "nonzero_det_ratio": round(nonzero_det_pairs / total_pairs, 6),
+        "has_abba": has_abba,
+        "cramer_witness": first_det_witness,
+        "degenerate_witness": first_degenerate_witness,
+    }
+
+
+def probe_coupled_bijection_table(
+    field: QuadraticField,
+    pi_table: list[list[int]],
+) -> dict[str, object]:
+    """Exhaustively test any general coupled coloring C(y, z) = pi_table[z][y] on F_q x F_q.
+
+    Covers non-affine coupled permutations (such as shifted-pole inversions
+    pi_z(y) = (y + alpha(z))^(-1) + F(z) or multiplicative coset permutations).
+    """
+    q = field.q
+    add = field.add
+    if len(pi_table) != q or any(len(row) != q for row in pi_table):
+        raise ValueError(f"pi_table must be a {q}x{q} array")
+
+    for h in range(1, q):
+        h2 = add[h][h]
+        h3 = add[h2][h]
+        for z0 in range(q):
+            r0 = pi_table[z0]
+            r1 = pi_table[add[z0][h]]
+            r2 = pi_table[add[z0][h2]]
+            r3 = pi_table[add[z0][h3]]
+            for eta in range(q):
+                e2 = add[eta][eta]
+                e3 = add[e2][eta]
+                for y0 in range(q):
+                    c0 = r0[y0]
+                    c3 = r3[add[y0][e3]]
+                    if c0 == c3:
+                        c1 = r1[add[y0][eta]]
+                        c2 = r2[add[y0][e2]]
+                        if c1 == c2:
+                            return {
+                                "field": f"F_{q}",
+                                "has_abba": True,
+                                "witness": {
+                                    "y0": field.coords(y0),
+                                    "eta": field.coords(eta),
+                                    "z0": field.coords(z0),
+                                    "h": field.coords(h),
+                                    "colors": [c0, c1, c2, c3],
+                                },
+                            }
+    return {"field": f"F_{q}", "has_abba": False, "witness": None}
+
+
+def probe_multiplicative_character_shear(
+    field: QuadraticField,
+    coset_modulus: int,
+    coset_weights: list[int],
+    poly_coeffs: list[int] | None = None,
+) -> dict[str, object]:
+    """Test non-polynomial multiplicative character / cyclotomic coset shear f(z) over F_{p^2}.
+
+    Maps each nonzero z in F_q* to its cyclotomic coset index (dlog(z) mod coset_modulus),
+    multiplies/shifts by `coset_weights[idx]`, and optionally adds a base polynomial.
+    Tests whether any nonzero step h gives a zero third difference delta^3 f(z0, h) == 0.
+    """
+    q = field.q
+    if (q - 1) % coset_modulus != 0 or len(coset_weights) != coset_modulus:
+        raise ValueError(f"coset_modulus={coset_modulus} must divide q-1={q - 1} and match coset_weights length")
+
+    # Find a primitive root g of F_q*
+    g = 1
+    for cand in range(2, q):
+        seen = set()
+        cur = 1
+        for _ in range(q - 1):
+            seen.add(cur)
+            cur = field.mul[cur][cand]
+        if len(seen) == q - 1:
+            g = cand
+            break
+
+    dlog = [0] * q
+    cur = 1
+    for exp in range(q - 1):
+        dlog[cur] = exp
+        cur = field.mul[cur][g]
+
+    def fn(f: QuadraticField, z: int) -> int:
+        base = f.eval_poly(poly_coeffs, z) if poly_coeffs else 0
+        if z == 0:
+            return base
+        c_weight = coset_weights[dlog[z] % coset_modulus]
+        # Non-algebraic piecewise scaling: c_weight * z^3 + base
+        return f.add[base][f.mul[c_weight][f.cube[z]]]
+
+    res = probe_third_difference_zero(field, fn)
+    res["primitive_root"] = field.coords(g)
+    res["coset_modulus"] = coset_modulus
+    return res
+
