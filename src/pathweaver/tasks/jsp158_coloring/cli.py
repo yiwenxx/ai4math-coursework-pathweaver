@@ -1,13 +1,16 @@
 """Streamlined JSP-000158 CLI: instance generation, legal seed and independent 4-AP verification."""
 from dataclasses import asdict
+import json
 from pathlib import Path
 
+from pathweaver.core.constructive import run_patternboost
 from pathweaver.core.contracts import SolveBudget, parse_strict_json, read_strict_json, write_json
 
 from . import Jsp158ColoringTaskPack
 from .cyclic import MAX_ORDINARY_THREE_COLOR_SIZE, MAX_TEMPLATE_BYTES, MAX_TEMPLATE_SIZE, verify_template
 from .digit_lift import verify_digit_lift
 from .model import MAX_N, parse_instance
+from .patternboost import Jsp158PatternBoostTask
 
 
 def add_jsp158_parser(subparsers):
@@ -40,6 +43,14 @@ def add_jsp158_parser(subparsers):
         template.add_argument("template", type=Path, help=(
             f"JSON object with colors or palettes, {limits}, at most {MAX_TEMPLATE_BYTES} bytes"
         ))
+    patternboost = commands.add_parser("patternboost", help="Run PatternBoost constructive witness search")
+    patternboost.add_argument("--mode", choices=("interval", "cyclic"), default="interval")
+    patternboost.add_argument("--n", type=int, required=True, help="Interval length N or cyclic modulus m")
+    patternboost.add_argument("--colors", type=int, default=None, help="Optional target color palette size")
+    patternboost.add_argument("--rounds", type=int, default=4, help="PatternBoost alternating rounds")
+    patternboost.add_argument("--local-steps", type=int, default=200, help="Tabu local search steps per witness")
+    patternboost.add_argument("--seed", type=int, default=0, help="Deterministic RNG seed")
+    patternboost.add_argument("--output", type=Path, help="Optional JSON output path")
 
 
 def run_jsp158_command(args, parser):
@@ -65,6 +76,20 @@ def run_jsp158_command(args, parser):
             write_json(result)
             if not result["valid"]:
                 parser.exit(1)
+        elif args.jsp158_command == "patternboost":
+            task = Jsp158PatternBoostTask(mode=args.mode, n=args.n, colors=args.colors)
+            result = run_patternboost(
+                task,
+                rounds=args.rounds,
+                local_steps=args.local_steps,
+                seed=args.seed,
+            )
+            payload = json.dumps(result, ensure_ascii=False, separators=(",", ":"), allow_nan=False) + "\n"
+            if args.output is None:
+                print(payload, end="")
+            else:
+                args.output.parent.mkdir(parents=True, exist_ok=True)
+                args.output.write_text(payload, encoding="utf-8", newline="\n")
         else:
             instance = read_strict_json(args.instance)
             parse_instance(instance)

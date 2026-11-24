@@ -1,11 +1,21 @@
 """Deterministic structural + UCB-attributed slot retrieval with temporal visibility."""
-from collections import Counter
+from collections import Counter, defaultdict
+from collections.abc import Iterable
 from dataclasses import dataclass
 import math
 import re
 
-from pathweaver.core.research_records import ResearchEvent, canonical_json
+from pathweaver.core.research_records import ResearchEvent
 from pathweaver.research.memory.store import MemoryStore
+
+_MATH_SYNONYM_CLUSTERS: tuple[frozenset[str], ...] = (
+    frozenset({"matching", "bipartite", "hungarian", "hall", "konig", "potentials", "assignment", "flow"}),
+    frozenset({"cover", "independent", "nemhauser", "trotter", "packing", "kernel", "vertex"}),
+    frozenset({"progression", "abba", "behrend", "salem", "spencer", "coset", "radix", "coloring"}),
+    frozenset({"frobenius", "galois", "norm", "trace", "catalecticant", "polynomial", "field", "quotient"}),
+    frozenset({"lagrangian", "subgradient", "relaxation", "dual", "slack", "bound", "primal"}),
+    frozenset({"induction", "omega", "simp", "rewrite", "calc", "subgoal", "lean", "tactic"}),
+)
 
 
 @dataclass(frozen=True)
@@ -44,36 +54,90 @@ def _tokens(text: str) -> list[str]:
     return tokens
 
 
+def _expand_math_synonyms(tokens: Iterable[str]) -> set[str]:
+    base = set(tokens)
+    expanded: set[str] = set()
+    for cluster in _MATH_SYNONYM_CLUSTERS:
+        if base & cluster:
+            expanded.update(cluster - base)
+    return expanded
+
+
+def _extract_searchable_tokens(event: ResearchEvent) -> Counter[str]:
+    """Extract clean semantic tokens without indexing raw JSON structural field names."""
+    payload = event.payload
+    chunks: list[str] = []
+    for key in ("statement", "conditions", "test_plan", "action", "rationale", "outcome"):
+        val = payload.get(key)
+        if isinstance(val, str) and val.strip():
+            chunks.append(val)
+    tags = payload.get("tags") or ()
+    if isinstance(tags, (list, tuple)):
+        for tag in tags:
+            if isinstance(tag, str) and tag.strip():
+                chunks.append(tag.replace(":", " ").replace("_", " "))
+    diag = payload.get("diagnostics")
+    if isinstance(diag, dict):
+        failure = diag.get("failure")
+        if isinstance(failure, str) and failure.strip():
+            chunks.append(failure[:500])
+        delta = diag.get("delta")
+        if isinstance(delta, dict):
+            for dkey in ("regime", "regime_transition", "signal_tier"):
+                dval = delta.get(dkey)
+                if isinstance(dval, str) and dval.strip():
+                    chunks.append(dval.replace("->", " ").replace("_", " "))
+            for b_id in delta.get("bottleneck_instances") or ():
+                if isinstance(b_id, str) and b_id.strip():
+                    chunks.append(b_id)
+    return Counter(_tokens(" ".join(chunks)))
+
+
 def _is_execution_noise(event: ResearchEvent) -> bool:
     tags = event.payload.get("tags") or ()
-    if "signal:execution_noise" in tags:
+    if "signal:execution_noise" in tags or "signal:dominated_pruned" in tags:
         return True
-    return event.kind == "attempt" and event.payload.get("outcome") in {"malformed", "timeout", "exception"}
+    return event.kind == "attempt" and event.payload.get("outcome") in {
+        "malformed", "timeout", "exception", "pruned_dominated",
+    }
 
 
-def _attribution_stats(records: list[ResearchEvent], run_id: str) -> tuple[Counter[str], Counter[str], Counter[str]]:
-    exposure_counts: Counter[str] = Counter()
+def _attribution_stats(
+    records: list[ResearchEvent],
+    run_id: str,
+) -> tuple[defaultdict[str, float], Counter[str], Counter[str]]:
+    exposure_counts: defaultdict[str, float] = defaultdict(float)
     win_counts: Counter[str] = Counter()
     regression_counts: Counter[str] = Counter()
     for event in records:
         if event.kind != "attempt" or event.run_id != run_id:
             continue
+        if _is_execution_noise(event):
+            continue
         delta = (event.payload.get("diagnostics") or {}).get("delta") or {}
         signal_tier = delta.get("signal_tier") or ""
         improved = signal_tier in {"breakthrough", "stepping_stone"}
         regressed = bool(delta.get("regressed_instances")) and not improved
-        exposed = set(event.context_exposures)
+
+        direct_refs: set[str] = set()
         if event.payload.get("hypothesis_id"):
-            exposed.add(str(event.payload["hypothesis_id"]))
+            direct_refs.add(str(event.payload["hypothesis_id"]))
         declared_lesson = delta.get("declared_lesson_id")
         if isinstance(declared_lesson, str) and declared_lesson:
-            exposed.add(declared_lesson)
-        for ref_id in exposed:
-            exposure_counts[ref_id] += 1
+            direct_refs.add(declared_lesson)
+        passive_refs = set(event.context_exposures) - direct_refs
+
+        for ref_id in direct_refs:
+            exposure_counts[ref_id] += 1.0
             if improved:
                 win_counts[ref_id] += 1
             elif regressed:
                 regression_counts[ref_id] += 1
+
+        for ref_id in passive_refs:
+            exposure_counts[ref_id] += 0.25
+            if improved:
+                win_counts[ref_id] += 1
     return exposure_counts, win_counts, regression_counts
 
 
@@ -134,10 +198,11 @@ def retrieve(store: MemoryStore, query: MemoryQuery) -> list[MemoryHit]:
         ):
             candidates.append((event, True, status, info))
 
-    texts = [Counter(_tokens(canonical_json(e.payload))) for e, _, _, _ in candidates]
+    texts = [_extract_searchable_tokens(e) for e, _, _, _ in candidates]
     document_frequency = Counter(token for doc in texts for token in doc)
     average_length = sum(sum(doc.values()) for doc in texts) / max(1, len(texts)) or 1
     query_tokens = set(_tokens(query.text))
+    synonym_tokens = _expand_math_synonyms(query_tokens)
     query_tag_set = set(query.tags)
     bottlenecks = tuple(query.bottleneck_instances)
     hits: list[MemoryHit] = []
@@ -145,11 +210,17 @@ def retrieve(store: MemoryStore, query: MemoryQuery) -> list[MemoryHit]:
 
     for (event, advice, status, info), doc in zip(candidates, texts):
         score = 0.0
+        doc_len = sum(doc.values()) or 1
         for token in query_tokens:
             frequency = doc[token]
             if frequency:
                 idf = math.log(1 + (len(texts) - document_frequency[token] + .5) / (document_frequency[token] + .5))
-                score += idf * frequency * 2.2 / (frequency + 1.2 * (.25 + .75 * sum(doc.values()) / average_length))
+                score += idf * frequency * 2.2 / (frequency + 1.2 * (.25 + .75 * doc_len / average_length))
+        for token in synonym_tokens:
+            frequency = doc[token]
+            if frequency:
+                idf = math.log(1 + (len(texts) - document_frequency[token] + .5) / (document_frequency[token] + .5))
+                score += 0.35 * idf * frequency * 2.2 / (frequency + 1.2 * (.25 + .75 * doc_len / average_length))
 
         tags = set(event.payload.get("tags", []))
         score += 2.0 * len(query_tag_set.intersection(tags))

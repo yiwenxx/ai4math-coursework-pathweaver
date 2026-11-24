@@ -1,16 +1,18 @@
 """Host-side Lean 4 kernel evaluator with statement locking and axiom audit."""
 from collections.abc import Mapping
+import re
 from typing import Any
 
 from pathweaver.core.contracts import Evaluation, EvidenceLevel, validate_solution_envelope
 from pathweaver.research.formal_verifier import (
+    _strip_lean_comments_and_strings,
     build_locked_lean_module,
     verify_formal_proof,
 )
 
 from .model import LeanProofInstance, SCHEMA_VERSION, TASK_ID, parse_instance
 
-MAX_SORRY_BOUND = 64
+MAX_SORRY_BOUND = 1000
 MAX_PROOF_BYTES = 1_000_000
 
 
@@ -25,6 +27,8 @@ def evaluate_lean_source(
     allow_sorry_search: bool = False,
     wall_seconds: float = 60.0,
     docker_image: str | None = None,
+    use_warm_server: bool = False,
+    auto_repair: bool = False,
     raise_on_unavailable: bool = False,
 ) -> Evaluation:
     """Lock the target statement, compile via Lean 4 kernel, and return structured Evaluation."""
@@ -73,6 +77,7 @@ def evaluate_lean_source(
         timeout_seconds=wall_seconds,
         allowed_axioms=frozenset(instance.allowed_axioms),
         allow_partial_sorry=allow_sorry_search,
+        use_warm_server=(use_warm_server and docker_image is None),
     )
 
     if verdict.status == "backend_unavailable":
@@ -91,6 +96,34 @@ def evaluate_lean_source(
             evidence=EvidenceLevel.UNVERIFIED,
         )
 
+    repaired = False
+    if auto_repair and docker_image is None and verdict.status in {"incomplete_sorry", "failed"}:
+        from pathweaver.research.lean_repair import repair_lean_proof
+
+        repair_res = repair_lean_proof(
+            instance,
+            proof_source,
+            wall_seconds=min(8.0, max(1.0, wall_seconds * 0.4)),
+            use_warm_server=use_warm_server,
+        )
+        repair_verdict = repair_res.get("verdict")
+        if repair_res.get("repaired") and repair_verdict is not None:
+            adopt = (
+                repair_verdict.status == "verified"
+                or (
+                    allow_sorry_search
+                    and repair_verdict.status == "incomplete_sorry"
+                    and (
+                        verdict.status == "failed"
+                        or repair_verdict.sorry_count < verdict.sorry_count
+                    )
+                )
+            )
+            if adopt:
+                proof_source = str(repair_res["repaired_source"])
+                verdict = repair_verdict
+                repaired = True
+
     diag_messages = [dict(item) for item in verdict.diagnostics[:8]]
     base_diag: dict[str, Any] = {
         "theorem_name": instance.theorem_name,
@@ -103,6 +136,9 @@ def evaluate_lean_source(
         "lean_messages": diag_messages,
         "compiler_output": verdict.compiler_output[:2000],
     }
+    if repaired:
+        base_diag["repaired"] = True
+        base_diag["repaired_source"] = proof_source
 
     if verdict.status == "verified":
         proof_bytes = min(MAX_PROOF_BYTES, len(proof_source.encode("utf-8")))
@@ -117,11 +153,24 @@ def evaluate_lean_source(
         )
 
     if allow_sorry_search and verdict.status == "incomplete_sorry":
-        sorry_val = min(MAX_SORRY_BOUND, max(1, verdict.sorry_count))
+        cleaned = _strip_lean_comments_and_strings(proof_source)
+        total_steps = len(re.findall(r"\b(?:have|lemma)\b", cleaned))
+        verified_steps = max(0, total_steps - verdict.sorry_count)
+        base_sketch = min(64, MAX_SORRY_BOUND // 2)
+        remaining_burden = max(
+            1,
+            min(
+                MAX_SORRY_BOUND,
+                base_sketch + verdict.sorry_count * 4 - min(base_sketch - 1, verified_steps * 6),
+            ),
+        )
+        proof_bytes = min(MAX_PROOF_BYTES, len(proof_source.encode("utf-8")))
         base_diag["formal_verified"] = False
+        base_diag["verified_steps"] = verified_steps
+        base_diag["remaining_burden"] = remaining_burden
         return Evaluation(
             feasible=True,
-            objectives=(1, sorry_val, 0),
+            objectives=(1, remaining_burden, proof_bytes),
             violations=(),
             diagnostics=base_diag,
             lower_bound=lower_bound,

@@ -4,6 +4,7 @@ Supports local `lake env lean --json` / `lean --json` or an immutable read-only
 networkless Docker image, with nested-comment-safe escape scanning, namespace
 isolation, and `#print axioms` checking. Always fails closed if Lean is unavailable.
 """
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 import json
 import os
@@ -32,7 +33,16 @@ _LEAN_FORBIDDEN_PATTERNS = (
     (re.compile(r"\bnative_decide\b"), "native_decide (disabled under strict kernel policy)"),
     (re.compile(r"(?m)^\s*#(?:eval|exec)\b"), "#eval/#exec metaprogramming execution"),
     (re.compile(r"(?m)^\s*(?:builtin_)?initialize\b"), "initialize hook"),
-    (re.compile(r"(?m)^\s*(?:local\s+)?(?:elab|macro_rules)\b"), "custom elaborator/macro"),
+    (
+        re.compile(
+            r"(?m)^\s*(?:local\s+|scoped\s+)?(?:syntax|macro|elab|elab_rules|macro_rules|notation|infix[lr]?|prefix|postfix)\b"
+        ),
+        "custom syntax/macro/elaborator",
+    ),
+    (re.compile(r"\brun_cmd\b"), "run_cmd metaprogramming"),
+    (re.compile(r"\bby_elab\b"), "by_elab metaprogramming"),
+    (re.compile(r"\bLean\.(?:Environment|MetavarContext|Expr)\b"), "Lean kernel/meta internals"),
+    (re.compile(r"\bcompile_inductive\b"), "compile_inductive escape"),
     (re.compile(r"\b(?:IO\.|System\.|dbg_trace)\b"), "IO/System/dbg_trace access"),
 )
 
@@ -386,11 +396,13 @@ def verify_formal_proof(
     *,
     backend: str = "lean4",
     theorem_name: str | None = None,
+    theorem_names: Sequence[str] | None = None,
     project_dir: str | Path | None = None,
     docker_image: str | None = None,
     timeout_seconds: float = 60.0,
     allowed_axioms: frozenset[str] = ALLOWED_LEAN_AXIOMS,
     allow_partial_sorry: bool = False,
+    use_warm_server: bool = False,
 ) -> FormalVerificationResult:
     """Run Lean 4 kernel verification with soundness and `#print axioms` checks; fail closed if unavailable."""
     started = time.monotonic()
@@ -407,81 +419,114 @@ def verify_formal_proof(
             source_sha256=source_hash, soundness_errors=tuple(soundness_errors), wall_seconds=_elapsed(),
         )
 
+    targets = [
+        thm for thm in dict.fromkeys([*(theorem_names or ()), *((theorem_name,) if theorem_name else ())]) if thm
+    ]
     check_source = normalized
-    if theorem_name and not re.search(
-        rf"(?m)^\s*#print\s+axioms\s+{re.escape(theorem_name)}\b",
-        _strip_lean_comments_and_strings(check_source),
-    ):
-        check_source = check_source.rstrip() + f"\n\n#print axioms {theorem_name}\n"
+    stripped_check = _strip_lean_comments_and_strings(check_source)
+    missing_prints = [
+        thm for thm in targets
+        if not re.search(rf"(?m)^\s*#print\s+axioms\s+{re.escape(thm)}\b", stripped_check)
+    ]
+    if missing_prints:
+        check_source = check_source.rstrip() + "\n\n" + "\n".join(f"#print axioms {thm}" for thm in missing_prints) + "\n"
 
     effective_project = project_dir
     if effective_project is None and "PathWeaverFormal" in check_source:
         effective_project = default_formal_project_dir()
 
-    with tempfile.TemporaryDirectory(prefix="pathweaver-formal-") as tmpdir:
-        target_path = Path(tmpdir) / "Check.lean"
-        target_path.write_text(check_source, encoding="utf-8", newline="\n")
+    diagnostics: list[dict[str, Any]] | None = None
+    combined_out = ""
+    error_count = 0
+    sorry_count = 0
+    returncode = 0
 
-        resolved = _build_lean_command(target_path, effective_project=effective_project, docker_image=docker_image)
-        if isinstance(resolved, str):
-            return FormalVerificationResult(
-                status="backend_unavailable", backend=backend, theorem_name=theorem_name,
-                source_sha256=source_hash, compiler_output=resolved, wall_seconds=_elapsed(),
-            )
-        cmd, cwd = resolved
+    if use_warm_server and docker_image is None:
+        from pathweaver.research.lean_server import get_default_lean_server_pool
 
-        try:
-            proc = _run_subprocess(cmd, cwd=cwd, timeout=timeout_seconds)
-        except (OSError, subprocess.TimeoutExpired) as error:
-            return FormalVerificationResult(
-                status="failed", backend=backend, theorem_name=theorem_name,
-                source_sha256=source_hash, compiler_output=f"Lean execution failed: {error}", wall_seconds=_elapsed(),
-            )
-
-        diagnostics, combined_out = _parse_lean_json_output(proc.stdout, proc.stderr)
-        error_count = sum(1 for item in diagnostics if item["severity"] == "error")
-        sorry_count = sum(
-            1 for item in diagnostics
-            if item["severity"] == "warning" and "sorry" in item["message"].lower()
+        warm_res = get_default_lean_server_pool().check_source(
+            check_source,
+            project_dir=effective_project,
+            timeout_seconds=timeout_seconds,
         )
+        if warm_res is not None:
+            diagnostics = list(warm_res["diagnostics"])
+            combined_out = str(warm_res["combined_output"])
+            error_count = int(warm_res["error_count"])
+            sorry_count = int(warm_res["sorry_count"])
+            returncode = int(warm_res["returncode"])
 
-        if proc.returncode != 0 or error_count > 0:
-            return FormalVerificationResult(
-                status="failed", backend=backend, theorem_name=theorem_name,
-                source_sha256=source_hash, compiler_output=combined_out[:4000],
-                diagnostics=tuple(diagnostics),
-                error_count=max(error_count, 1 if proc.returncode != 0 else 0),
-                sorry_count=sorry_count, wall_seconds=_elapsed(),
+    if diagnostics is None:
+        with tempfile.TemporaryDirectory(prefix="pathweaver-formal-") as tmpdir:
+            target_path = Path(tmpdir) / "Check.lean"
+            target_path.write_text(check_source, encoding="utf-8", newline="\n")
+
+            resolved = _build_lean_command(target_path, effective_project=effective_project, docker_image=docker_image)
+            if isinstance(resolved, str):
+                return FormalVerificationResult(
+                    status="backend_unavailable", backend=backend, theorem_name=theorem_name,
+                    source_sha256=source_hash, compiler_output=resolved, wall_seconds=_elapsed(),
+                )
+            cmd, cwd = resolved
+
+            try:
+                proc = _run_subprocess(cmd, cwd=cwd, timeout=timeout_seconds)
+            except (OSError, subprocess.TimeoutExpired) as error:
+                return FormalVerificationResult(
+                    status="failed", backend=backend, theorem_name=theorem_name,
+                    source_sha256=source_hash, compiler_output=f"Lean execution failed: {error}", wall_seconds=_elapsed(),
+                )
+
+            diagnostics, combined_out = _parse_lean_json_output(proc.stdout, proc.stderr)
+            error_count = sum(1 for item in diagnostics if item["severity"] == "error")
+            sorry_count = sum(
+                1 for item in diagnostics
+                if item["severity"] == "warning" and "sorry" in item["message"].lower()
             )
+            returncode = proc.returncode
 
-        axioms: list[str] = []
-        post_errors: list[str] = []
-        if theorem_name:
-            axioms, ax_errors = _parse_lean_axioms(combined_out, theorem_name, allowed_axioms=allowed_axioms)
-            post_errors.extend(ax_errors)
-        if "sorryAx" in axioms:
-            sorry_count = max(sorry_count, 1)
-        if sorry_count > 0 and not any("sorry" in msg.lower() for msg in post_errors):
-            post_errors.append("Lean proof relies on `sorry` / `sorryAx`")
-
-        if post_errors:
-            only_sorry = (
-                allow_partial_sorry
-                and sorry_count > 0
-                and all("sorry" in err.lower() for err in post_errors)
-                and all(ax in allowed_axioms or ax == "sorryAx" for ax in axioms)
-            )
-            return FormalVerificationResult(
-                status="incomplete_sorry" if only_sorry else "rejected_soundness",
-                backend=backend, theorem_name=theorem_name, source_sha256=source_hash,
-                axioms=tuple(axioms), soundness_errors=tuple(post_errors),
-                compiler_output=combined_out[:4000], diagnostics=tuple(diagnostics),
-                error_count=0, sorry_count=sorry_count, wall_seconds=_elapsed(),
-            )
-
+    if returncode != 0 or error_count > 0:
         return FormalVerificationResult(
-            status="verified", backend=backend, theorem_name=theorem_name,
-            source_sha256=source_hash, axioms=tuple(axioms),
-            compiler_output=combined_out[:4000], diagnostics=tuple(diagnostics),
-            error_count=0, sorry_count=0, wall_seconds=_elapsed(),
+            status="failed", backend=backend, theorem_name=theorem_name,
+            source_sha256=source_hash, compiler_output=combined_out[:4000],
+            diagnostics=tuple(diagnostics),
+            error_count=max(error_count, 1 if returncode != 0 else 0),
+            sorry_count=sorry_count, wall_seconds=_elapsed(),
         )
+
+    axioms: list[str] = []
+    seen_axioms: set[str] = set()
+    post_errors: list[str] = []
+    for thm in targets:
+        thm_axioms, ax_errors = _parse_lean_axioms(combined_out, thm, allowed_axioms=allowed_axioms)
+        for ax in thm_axioms:
+            if ax not in seen_axioms:
+                seen_axioms.add(ax)
+                axioms.append(ax)
+        post_errors.extend(ax_errors)
+    if "sorryAx" in axioms:
+        sorry_count = max(sorry_count, 1)
+    if sorry_count > 0 and not any("sorry" in msg.lower() for msg in post_errors):
+        post_errors.append("Lean proof relies on `sorry` / `sorryAx`")
+
+    if post_errors:
+        only_sorry = (
+            allow_partial_sorry
+            and sorry_count > 0
+            and all("sorry" in err.lower() for err in post_errors)
+            and all(ax in allowed_axioms or ax == "sorryAx" for ax in axioms)
+        )
+        return FormalVerificationResult(
+            status="incomplete_sorry" if only_sorry else "rejected_soundness",
+            backend=backend, theorem_name=theorem_name, source_sha256=source_hash,
+            axioms=tuple(axioms), soundness_errors=tuple(post_errors),
+            compiler_output=combined_out[:4000], diagnostics=tuple(diagnostics),
+            error_count=0, sorry_count=sorry_count, wall_seconds=_elapsed(),
+        )
+
+    return FormalVerificationResult(
+        status="verified", backend=backend, theorem_name=theorem_name,
+        source_sha256=source_hash, axioms=tuple(axioms),
+        compiler_output=combined_out[:4000], diagnostics=tuple(diagnostics),
+        error_count=0, sorry_count=0, wall_seconds=_elapsed(),
+    )

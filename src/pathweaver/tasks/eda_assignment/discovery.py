@@ -1,10 +1,16 @@
 """EDA-only discovery admission, objective bounds and compact trusted feedback."""
+from collections import deque
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict
 from functools import reduce
 from math import gcd
+from random import Random
+from typing import Any
 
+from pathweaver.evaluation.surrogate import SurrogateCalibrator
 from .evaluator import _arrival_times, evaluate, evaluate_prepared, prepare_verifier
-from .model import TASK_ID, InvalidInstanceError, find_matching, geometric_length, parse_instance
+from .generator import generate as generate_eda_instance
+from .model import SCHEMA_VERSION, TASK_ID, InvalidInstanceError, find_matching, geometric_length, parse_instance
 
 
 class EdaDiscoveryTask:
@@ -157,6 +163,253 @@ class EdaDiscoveryTask:
         if find_matching(parsed) is None:
             return None
         return self.prepare(raw_reduced)
+
+    def permute_instance(self, instance: Mapping[str, Any], *, seed: int = 1) -> dict[str, Any]:
+        """Return an isomorphic EDA instance with relabeled IDs, shuffled order, and translated geometry."""
+        inst = parse_instance(instance)
+        rng = Random(seed)
+
+        node_ids = list(inst.nodes.keys())
+        rng.shuffle(node_ids)
+        node_map = {old: f"n{i}" for i, old in enumerate(node_ids)}
+
+        site_ids = list(inst.sites.keys())
+        rng.shuffle(site_ids)
+        site_map = {old: f"s{i}" for i, old in enumerate(site_ids)}
+
+        edge_ids = [edge.id for edge in inst.edges]
+        rng.shuffle(edge_ids)
+        edge_map = {old: f"e{i}" for i, old in enumerate(edge_ids)}
+
+        dx = 10 + rng.randrange(500)
+        dy = 10 + rng.randrange(500)
+
+        nodes_raw = [
+            {"id": node_map[n.id], "x": n.x + dx, "y": n.y + dy, "tier": n.tier}
+            for n in inst.nodes.values()
+        ]
+        rng.shuffle(nodes_raw)
+
+        sites_raw = [
+            {"id": site_map[s.id], "x": s.x + dx, "y": s.y + dy}
+            for s in inst.sites.values()
+        ]
+        rng.shuffle(sites_raw)
+
+        edges_raw: list[dict[str, Any]] = []
+        for edge in inst.edges:
+            if edge.delay is not None:
+                edges_raw.append({
+                    "id": edge_map[edge.id],
+                    "source": node_map[edge.source],
+                    "target": node_map[edge.target],
+                    "delay": edge.delay,
+                })
+            else:
+                elig = [site_map[s] for s in edge.eligible_sites]
+                rng.shuffle(elig)
+                edges_raw.append({
+                    "id": edge_map[edge.id],
+                    "source": node_map[edge.source],
+                    "target": node_map[edge.target],
+                    "base_delay": edge.base_delay,
+                    "alpha": edge.alpha,
+                    "eligible_sites": elig,
+                })
+        rng.shuffle(edges_raw)
+
+        raw_perm = {
+            "schema_version": SCHEMA_VERSION,
+            "task_id": TASK_ID,
+            "instance_id": f"{inst.instance_id}__iso_{seed}",
+            "data": {"nodes": nodes_raw, "sites": sites_raw, "edges": edges_raw},
+        }
+        return self.prepare(raw_perm)
+
+    def subset_elements(self, instance: Mapping[str, Any]) -> list[str]:
+        """Return cross-edge IDs eligible for delta-debugging subset reduction."""
+        inst = parse_instance(instance)
+        return [edge.id for edge in inst.cross_edges]
+
+    def rebuild_from_subset(self, instance: Mapping[str, Any], kept: Sequence[str]) -> dict[str, Any] | None:
+        """Rebuild a valid reduced EDA sub-instance from a subset of cross-edge IDs."""
+        inst = parse_instance(instance)
+        kept_cross_ids = {str(eid) for eid in kept}
+        cross_kept = [edge for edge in inst.cross_edges if edge.id in kept_cross_ids]
+        if not cross_kept:
+            return None
+
+        cross_nodes = {edge.source for edge in cross_kept} | {edge.target for edge in cross_kept}
+        fixed_out: dict[str, list[str]] = {}
+        fixed_in: dict[str, list[str]] = {}
+        for edge in inst.edges:
+            if edge.delay is not None:
+                fixed_out.setdefault(edge.source, []).append(edge.target)
+                fixed_in.setdefault(edge.target, []).append(edge.source)
+
+        def _reach(adj: Mapping[str, list[str]]) -> set[str]:
+            seen = set(cross_nodes)
+            queue = deque(cross_nodes)
+            while queue:
+                cur = queue.popleft()
+                for nxt in adj.get(cur, ()):
+                    if nxt not in seen:
+                        seen.add(nxt)
+                        queue.append(nxt)
+            return seen
+
+        bridge_nodes = _reach(fixed_out) & _reach(fixed_in)
+        kept_edges = [
+            edge for edge in inst.edges
+            if (edge.delay is None and edge.id in kept_cross_ids)
+            or (edge.delay is not None and edge.source in bridge_nodes and edge.target in bridge_nodes)
+        ]
+        if not kept_edges:
+            return None
+
+        node_ids = {edge.source for edge in kept_edges} | {edge.target for edge in kept_edges}
+        site_ids = {site for edge in cross_kept for site in edge.eligible_sites}
+        if not node_ids or not site_ids:
+            return None
+
+        raw_reduced = {
+            "schema_version": SCHEMA_VERSION,
+            "task_id": TASK_ID,
+            "instance_id": f"{inst.instance_id}__ddmin_{len(cross_kept)}",
+            "data": {
+                "nodes": [
+                    {"id": n.id, "x": n.x, "y": n.y, "tier": n.tier}
+                    for n in inst.nodes.values() if n.id in node_ids
+                ],
+                "sites": [
+                    {"id": s.id, "x": s.x, "y": s.y}
+                    for s in inst.sites.values() if s.id in site_ids
+                ],
+                "edges": [
+                    (
+                        {"id": e.id, "source": e.source, "target": e.target, "delay": e.delay}
+                        if e.delay is not None
+                        else {
+                            "id": e.id, "source": e.source, "target": e.target,
+                            "base_delay": e.base_delay, "alpha": e.alpha,
+                            "eligible_sites": list(e.eligible_sites),
+                        }
+                    )
+                    for e in kept_edges
+                ],
+            },
+        }
+        try:
+            parsed = parse_instance(raw_reduced)
+        except InvalidInstanceError:
+            return None
+        if find_matching(parsed) is None:
+            return None
+        return self.prepare(raw_reduced)
+
+    def calibrate_instance_delays(
+        self,
+        instance: Mapping[str, Any],
+        edge_measurements: Sequence[Mapping[str, Any]],
+    ) -> dict[str, Any]:
+        """Calibrate cross-edge (base_delay, alpha) against physical STA measurements via SurrogateCalibrator."""
+        inst = parse_instance(instance)
+        edge_by_id = {edge.id: edge for edge in inst.edges}
+        surr_vals: list[float] = []
+        meas_vals: list[float] = []
+
+        for item in edge_measurements:
+            if not isinstance(item, Mapping):
+                continue
+            meas: float | None = None
+            meas_key: str | None = None
+            for key in ("measured_delay", "sta_delay", "actual_delay", "observed_delay", "high_fidelity_delay", "observed", "delay"):
+                if key in item and item[key] is not None:
+                    meas = float(item[key])
+                    meas_key = key
+                    break
+            if meas is None:
+                continue
+
+            surr: float | None = None
+            for key in ("surrogate_delay", "predicted_delay", "model_delay", "predicted"):
+                if key in item and item[key] is not None:
+                    surr = float(item[key])
+                    break
+            if surr is None and meas_key != "delay" and "delay" in item and item["delay"] is not None:
+                surr = float(item["delay"])
+            if surr is None:
+                eid = item.get("edge_id") or item.get("id")
+                if isinstance(eid, str) and eid in edge_by_id:
+                    edge = edge_by_id[eid]
+                    if edge.delay is not None:
+                        surr = float(edge.delay)
+                    else:
+                        if item.get("length") is not None:
+                            length = float(item["length"])
+                        elif isinstance(item.get("site_id") or item.get("site"), str):
+                            sid = str(item.get("site_id") or item.get("site"))
+                            if sid not in inst.sites:
+                                continue
+                            length = float(geometric_length(inst, edge, sid))
+                        else:
+                            length = float(min(geometric_length(inst, edge, s) for s in edge.eligible_sites))
+                        surr = float(edge.base_delay + edge.alpha * length)
+            if surr is not None:
+                surr_vals.append(surr)
+                meas_vals.append(meas)
+
+        calibrator = SurrogateCalibrator()
+        cal_report = calibrator.calibrate(surr_vals, meas_vals)
+        scale = float(cal_report["scale"])
+        shift = float(cal_report["shift"])
+
+        calibrated_edges: list[dict[str, Any]] = []
+        for edge in inst.edges:
+            if edge.delay is not None:
+                calibrated_edges.append({
+                    "id": edge.id,
+                    "source": edge.source,
+                    "target": edge.target,
+                    "delay": edge.delay,
+                })
+            else:
+                new_base = max(0, int(round(edge.base_delay * scale + shift)))
+                new_alpha = max(1 if edge.alpha > 0 else 0, int(round(edge.alpha * scale)))
+                calibrated_edges.append({
+                    "id": edge.id,
+                    "source": edge.source,
+                    "target": edge.target,
+                    "base_delay": new_base,
+                    "alpha": new_alpha,
+                    "eligible_sites": list(edge.eligible_sites),
+                })
+
+        raw_calibrated = {
+            "schema_version": SCHEMA_VERSION,
+            "task_id": TASK_ID,
+            "instance_id": inst.instance_id,
+            "data": {
+                "nodes": [{"id": n.id, "x": n.x, "y": n.y, "tier": n.tier} for n in inst.nodes.values()],
+                "sites": [{"id": s.id, "x": s.x, "y": s.y} for s in inst.sites.values()],
+                "edges": calibrated_edges,
+            },
+        }
+        prepared = self.prepare(raw_calibrated)
+        prepared["calibration"] = cal_report
+        return prepared
+
+    def generate_adversarial_instances(self, *, seed: int, count: int = 2) -> list[dict[str, Any]]:
+        """Generate unseen small EDA instances (size 8-16) for active adversarial probing."""
+        rng = Random(seed)
+        results: list[dict[str, Any]] = []
+        for idx in range(max(0, int(count))):
+            size = 8 + rng.randrange(9)
+            sub_seed = seed * 1009 + idx * 97 + 17
+            raw = dict(generate_eda_instance(seed=sub_seed, size=size))
+            raw["instance_id"] = f"eda_adv_{seed}_{idx}_n{size}"
+            results.append(self.prepare(raw))
+        return results
 
     def brief(self):
         return '''Implement a standalone Python standard-library function solve(instance, budget) returning a JSON object.

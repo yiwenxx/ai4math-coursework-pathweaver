@@ -8,6 +8,7 @@ import ast
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
+import re
 from typing import Any
 
 
@@ -43,12 +44,361 @@ DEFAULT_PARADIGM_CATALOG: tuple[dict[str, str], ...] = (
 )
 
 
+_EXTERNAL_SOLVER_ROOTS = frozenset({
+    "scipy", "ortools", "pulp", "cvxpy", "z3", "pysat", "networkx",
+    "igraph", "highs", "highspy", "gurobipy", "mip", "sympy", "cvxopt",
+})
+_HEAP_DEQUE_NAMES = frozenset({
+    "heapq", "heappush", "heappop", "heapify", "heappushpop", "heapreplace",
+    "nsmallest", "nlargest", "deque", "popleft", "appendleft", "priorityqueue", "lifoqueue",
+})
+_TRAVERSAL_TOKENS = frozenset({
+    "visited", "vis", "seen", "parent", "prev", "pred", "way", "dist",
+    "level", "match", "pair", "flow", "residual", "cap", "capacity",
+    "augment", "queue", "stack", "used", "path",
+})
+_DUAL_TOKENS = frozenset({
+    "dual", "lagrang", "lagrangian", "subgradient", "potential", "multiplier",
+    "multipliers", "spectral", "laplacian", "eigen", "simplex", "reduced",
+    "primal", "slack", "relax", "relaxation", "lam", "lambdas", "pi",
+    "lr", "step_size",
+})
+_SPECTRAL_LP_NAMES = frozenset({
+    "eig", "eigh", "eigvals", "eigvalsh", "eigsh", "svd", "linprog", "milp",
+    "cvxpy", "pulp", "highs", "highspy", "gurobipy", "cvxopt",
+})
+_MATCHING_SOLVER_NAMES = frozenset({
+    "linear_sum_assignment", "minimum_weight_full_matching",
+    "maximum_bipartite_matching", "maximum_flow", "min_cost_flow",
+    "max_weight_matching", "bipartite",
+})
+_EXACT_SOLVER_NAMES = frozenset({"z3", "pysat", "cp_model"})
+
+_EMPTY_FINGERPRINT: dict[str, Any] = {
+    "max_loop_depth": 0,
+    "has_recursion": False,
+    "has_heap_or_deque": False,
+    "has_augmenting_bfs_dfs": False,
+    "has_dual_potential_update": False,
+    "has_backtrack_pruning": False,
+    "mod_arith_density": 0.0,
+    "has_exp_or_anneal": False,
+    "uses_external_solver": False,
+    "function_count": 0,
+}
+
+
+def _strip_lean_comments(source: str) -> str:
+    no_block = re.sub(r"/-.*?-/", " ", source, flags=re.DOTALL)
+    return re.sub(r"--[^\n]*", "", no_block)
+
+
+def _is_lean_source(source: str, language: str) -> bool:
+    if language == "lean":
+        return True
+    if language != "auto":
+        return False
+    if ":=" not in source:
+        return False
+    if not re.search(r"\b(?:theorem|lemma|example|by)\b", source):
+        return False
+    try:
+        ast.parse(source)
+        return False
+    except SyntaxError:
+        return True
+
+
+def _split_tokens(names: set[str]) -> set[str]:
+    tokens: set[str] = set()
+    for name in names:
+        low = name.lower()
+        tokens.add(low)
+        for part in re.split(r"[^a-z0-9]+", low):
+            if part:
+                tokens.add(part)
+    return tokens
+
+
+def _distinct_keyword_hits(names: set[str], tokens: set[str], keywords: Sequence[str], *, exact_tokens: frozenset[str] = frozenset()) -> int:
+    hits = 0
+    for kw in keywords:
+        if kw in exact_tokens:
+            if kw in tokens:
+                hits += 1
+        elif any(kw in name for name in names):
+            hits += 1
+    return hits
+
+
+def _analyze_python_source(source: str) -> tuple[dict[str, Any], set[str], set[str], set[str], int, bool]:
+    """Return (fingerprint, raw_lower_names, split_tokens, imported_names, mod_ops, has_sort_call)."""
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return dict(_EMPTY_FINGERPRINT), set(), set(), set(), 0, False
+
+    names: set[str] = set()
+    imported: set[str] = set()
+    func_nodes: list[ast.FunctionDef | ast.AsyncFunctionDef] = []
+    max_loop_depth = 0
+    mod_ops = 0
+    total_ops = 0
+    has_exp_call = False
+    has_sort_call = False
+    uses_external_solver = False
+    has_heap_or_deque = False
+    has_while_loop = False
+    has_pop_in_loop = False
+    has_subscript_write_in_loop = False
+    has_subscript_arith_in_loop = False
+    has_projected_max_zero = False
+    has_anneal_loop = False
+    has_beam_or_stack_prune = False
+    has_random_call = False
+
+    def _is_zero_const(node: ast.AST) -> bool:
+        return isinstance(node, ast.Constant) and isinstance(node.value, (int, float)) and node.value == 0
+
+    def _visit(node: ast.AST, loop_depth: int, in_fn: str | None) -> None:
+        nonlocal max_loop_depth, mod_ops, total_ops, has_exp_call, has_sort_call
+        nonlocal uses_external_solver, has_heap_or_deque, has_while_loop
+        nonlocal has_pop_in_loop, has_subscript_write_in_loop, has_subscript_arith_in_loop
+        nonlocal has_projected_max_zero, has_anneal_loop, has_beam_or_stack_prune, has_random_call
+
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            func_nodes.append(node)
+            names.add(node.name.lower())
+            for child in ast.iter_child_nodes(node):
+                _visit(child, 0, node.name)
+            return
+
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                mod = alias.name.lower()
+                imported.add(mod)
+                root = mod.split(".", 1)[0]
+                imported.add(root)
+                if root in _EXTERNAL_SOLVER_ROOTS or mod.startswith(("numpy.linalg", "scipy.")):
+                    uses_external_solver = True
+                if root in _HEAP_DEQUE_NAMES or mod == "collections":
+                    if root == "heapq":
+                        has_heap_or_deque = True
+        elif isinstance(node, ast.ImportFrom):
+            mod = (node.module or "").lower()
+            if mod:
+                imported.add(mod)
+                root = mod.split(".", 1)[0]
+                imported.add(root)
+                if root in _EXTERNAL_SOLVER_ROOTS or mod.startswith(("numpy.linalg", "scipy.")):
+                    uses_external_solver = True
+                if root == "heapq":
+                    has_heap_or_deque = True
+            for alias in node.names:
+                aname = alias.name.lower()
+                imported.add(aname)
+                if aname in _HEAP_DEQUE_NAMES:
+                    has_heap_or_deque = True
+                if aname in _EXTERNAL_SOLVER_ROOTS:
+                    uses_external_solver = True
+
+        elif isinstance(node, ast.Name):
+            low = node.id.lower()
+            names.add(low)
+            if low in _HEAP_DEQUE_NAMES:
+                has_heap_or_deque = True
+        elif isinstance(node, ast.Attribute):
+            low = node.attr.lower()
+            names.add(low)
+            if low in _HEAP_DEQUE_NAMES:
+                has_heap_or_deque = True
+            if low == "exp":
+                has_exp_call = True
+            if low in {"random", "uniform", "randint", "choice", "randrange"}:
+                has_random_call = True
+        elif isinstance(node, ast.BinOp):
+            total_ops += 1
+            if isinstance(node.op, ast.Mod):
+                mod_ops += 1
+        elif isinstance(node, ast.AugAssign):
+            total_ops += 1
+            if isinstance(node.op, ast.Mod):
+                mod_ops += 1
+            if loop_depth > 0 and isinstance(node.target, ast.Subscript):
+                has_subscript_write_in_loop = True
+                if isinstance(node.op, (ast.Add, ast.Sub, ast.Mult, ast.Div)):
+                    has_subscript_arith_in_loop = True
+            if loop_depth > 0 and isinstance(node.op, ast.Mult) and isinstance(node.target, ast.Name):
+                tname = node.target.id.lower()
+                if any(tok in tname for tok in ("temp", "anneal", "cool", "lr", "alpha", "step")):
+                    has_anneal_loop = True
+        elif isinstance(node, ast.Assign):
+            if loop_depth > 0:
+                for tgt in node.targets:
+                    if isinstance(tgt, ast.Subscript):
+                        has_subscript_write_in_loop = True
+                        if any(isinstance(sub, ast.BinOp) for sub in ast.walk(node.value)):
+                            has_subscript_arith_in_loop = True
+        elif isinstance(node, ast.Call):
+            total_ops += 1
+            func = node.func
+            cname = func.id.lower() if isinstance(func, ast.Name) else (func.attr.lower() if isinstance(func, ast.Attribute) else "")
+            if cname == "exp":
+                has_exp_call = True
+            elif cname in {"sorted", "sort"}:
+                has_sort_call = True
+            elif cname == "divmod" or (cname == "pow" and len(node.args) == 3):
+                mod_ops += 1
+            elif cname in _HEAP_DEQUE_NAMES:
+                has_heap_or_deque = True
+            elif cname in {"random", "uniform", "randint", "randrange"}:
+                has_random_call = True
+            elif cname == "max" and len(node.args) == 2 and (_is_zero_const(node.args[0]) or _is_zero_const(node.args[1])):
+                has_projected_max_zero = True
+            if loop_depth > 0 and cname in {"pop", "popleft"}:
+                has_pop_in_loop = True
+
+        if isinstance(node, (ast.For, ast.AsyncFor, ast.While)):
+            if isinstance(node, ast.While):
+                has_while_loop = True
+            next_depth = loop_depth + 1
+            if next_depth > max_loop_depth:
+                max_loop_depth = next_depth
+            if isinstance(node, ast.While):
+                has_pop = False
+                has_prune_if = False
+                for sub in ast.walk(node):
+                    if isinstance(sub, ast.Call) and isinstance(sub.func, ast.Attribute) and sub.func.attr in {"pop", "popleft"}:
+                        has_pop = True
+                    elif isinstance(sub, ast.If) and any(isinstance(b, (ast.Continue, ast.Break, ast.Return)) for b in ast.walk(sub)):
+                        has_prune_if = True
+                if has_pop and has_prune_if:
+                    has_beam_or_stack_prune = True
+            for child in ast.iter_child_nodes(node):
+                _visit(child, next_depth, in_fn)
+            return
+
+        for child in ast.iter_child_nodes(node):
+            _visit(child, loop_depth, in_fn)
+
+    _visit(tree, 0, None)
+
+    # Check direct and 2-cycle mutual recursion plus recursive structural patterns.
+    func_names = {fn.name for fn in func_nodes}
+    call_graph: dict[str, set[str]] = {fn.name: set() for fn in func_nodes}
+    fn_has_loop: dict[str, bool] = {}
+    fn_has_prune_or_memo: dict[str, bool] = {}
+    fn_has_subscript_write: dict[str, bool] = {}
+    for fn in func_nodes:
+        has_loop = False
+        has_prune = False
+        has_sub_write = False
+        for dec in fn.decorator_list:
+            dname = dec.id.lower() if isinstance(dec, ast.Name) else (dec.attr.lower() if isinstance(dec, ast.Attribute) else "")
+            if "cache" in dname or "memo" in dname:
+                has_prune = True
+        for sub in ast.walk(fn):
+            if isinstance(sub, ast.Call) and isinstance(sub.func, ast.Name) and sub.func.id in func_names:
+                call_graph[fn.name].add(sub.func.id)
+            elif isinstance(sub, (ast.For, ast.AsyncFor, ast.While)):
+                has_loop = True
+            elif isinstance(sub, ast.If) and any(isinstance(b, (ast.Return, ast.Continue, ast.Break)) for b in ast.walk(sub)):
+                has_prune = True
+            elif isinstance(sub, (ast.Assign, ast.AugAssign)):
+                targets = sub.targets if isinstance(sub, ast.Assign) else [sub.target]
+                if any(isinstance(t, ast.Subscript) for t in targets):
+                    has_sub_write = True
+        fn_has_loop[fn.name] = has_loop
+        fn_has_prune_or_memo[fn.name] = has_prune
+        fn_has_subscript_write[fn.name] = has_sub_write
+
+    recursive_fns: set[str] = set()
+    for fname, callees in call_graph.items():
+        if fname in callees or any(fname in call_graph.get(other, ()) for other in callees if other != fname):
+            recursive_fns.add(fname)
+
+    has_recursion = bool(recursive_fns)
+    tokens = _split_tokens(names | imported)
+    has_traversal_token = bool(tokens & _TRAVERSAL_TOKENS)
+    has_dual_token = bool(tokens & _DUAL_TOKENS)
+
+    has_augmenting_bfs_dfs = bool(
+        (has_subscript_write_in_loop or any(fn_has_subscript_write.get(f, False) for f in recursive_fns))
+        and (
+            (has_heap_or_deque and max_loop_depth >= 2)
+            or (any(fn_has_loop.get(f, False) for f in recursive_fns) and has_traversal_token)
+            or (has_while_loop and max_loop_depth >= 2 and (has_pop_in_loop or has_traversal_token))
+        )
+    )
+    has_dual_potential_update = bool(
+        bool((tokens | imported) & _SPECTRAL_LP_NAMES)
+        or (has_subscript_arith_in_loop and (has_dual_token or has_projected_max_zero))
+    )
+    has_backtrack_pruning = bool(
+        any(fn_has_prune_or_memo.get(f, False) for f in recursive_fns)
+        or (has_beam_or_stack_prune and bool(tokens & {"beam", "branch", "bnb", "bound", "backtrack", "prune", "best"}))
+    )
+    has_exp_or_anneal = bool(
+        has_exp_call
+        or (has_anneal_loop and has_random_call)
+        or (max_loop_depth >= 1 and has_random_call and bool(tokens & {"anneal", "tabu", "metropolis", "ruin", "destroy"}))
+    )
+    mod_arith_density = round(min(1.0, mod_ops / max(1, total_ops)), 4)
+
+    fp = {
+        "max_loop_depth": max_loop_depth,
+        "has_recursion": has_recursion,
+        "has_heap_or_deque": has_heap_or_deque,
+        "has_augmenting_bfs_dfs": has_augmenting_bfs_dfs,
+        "has_dual_potential_update": has_dual_potential_update,
+        "has_backtrack_pruning": has_backtrack_pruning,
+        "mod_arith_density": mod_arith_density,
+        "has_exp_or_anneal": has_exp_or_anneal,
+        "uses_external_solver": uses_external_solver,
+        "function_count": len(func_nodes),
+    }
+    return fp, names, tokens, imported, mod_ops, has_sort_call
+
+
+def extract_ast_fingerprint(source: str, *, language: str = "auto") -> dict[str, Any]:
+    """Extract structural algorithmic signals from Python AST or Lean tactic blocks."""
+    if not isinstance(source, str) or not source.strip():
+        return dict(_EMPTY_FINGERPRINT)
+    if _is_lean_source(source, language):
+        cleaned = _strip_lean_comments(source)
+        lowered = cleaned.lower()
+        decls = re.findall(
+            r"^\s*(?:private\s+|noncomputable\s+|protected\s+)?(?:theorem|lemma|def|instance|example)\s+([A-Za-z0-9_']+)",
+            cleaned,
+            flags=re.MULTILINE,
+        )
+        tactic_branch_hits = len(re.findall(r"\b(?:induction|cases|rcases|match|repeat|iterate)\b", lowered))
+        has_recursion = "termination_by" in lowered or "decreasing_by" in lowered or any(
+            len(re.findall(rf"\b{re.escape(name)}\b", cleaned)) >= 2 for name in decls
+        )
+        has_backtrack = any(tok in lowered for tok in ("by_cases", "contradiction", "exfalso", "aesop", "decide", "omega"))
+        return {
+            "max_loop_depth": min(4, tactic_branch_hits),
+            "has_recursion": has_recursion,
+            "has_heap_or_deque": False,
+            "has_augmenting_bfs_dfs": False,
+            "has_dual_potential_update": False,
+            "has_backtrack_pruning": has_backtrack,
+            "mod_arith_density": round(min(1.0, len(re.findall(r"\bmod\b|%", lowered)) / max(1, len(cleaned.splitlines()))), 4),
+            "has_exp_or_anneal": False,
+            "uses_external_solver": any(tok in lowered for tok in ("smt", "duper", "egg")),
+            "function_count": len(decls),
+        }
+    fp, _, _, _, _, _ = _analyze_python_source(source)
+    return fp
+
+
 def classify_algorithmic_regime(source: str, *, language: str = "auto") -> str:
     """Classify Python or Lean candidate source into a coarse paradigm family."""
     if not isinstance(source, str) or not source.strip():
         return "general_constructive"
-    if language == "lean" or (language == "auto" and (":=" in source and ("theorem " in source or "by" in source))):
-        lowered = source.lower()
+    if _is_lean_source(source, language):
+        lowered = _strip_lean_comments(source).lower()
         if any(tok in lowered for tok in ("induction ", "cases ", "rcases ", "match ")):
             return "induction_case_analysis"
         if any(tok in lowered for tok in ("calc", "rw [", "simp", "ring", "linarith", "omega")):
@@ -56,43 +406,81 @@ def classify_algorithmic_regime(source: str, *, language: str = "auto") -> str:
         if any(tok in lowered for tok in ("have ", "lemma ", "obtain ", "refine ")):
             return "structured_lemma_decomposition"
         return "tactic_automation"
-    try:
-        tree = ast.parse(source)
-    except SyntaxError:
+
+    fp, names, tokens, imported, mod_ops, has_sort_call = _analyze_python_source(source)
+    if not names and not imported and fp["function_count"] == 0:
         return "general_constructive"
 
-    names: set[str] = set()
-    has_recursion = False
-    mod_ops = 0
-    exp_calls = 0
-
-    for node in ast.walk(tree):
-        if isinstance(node, ast.FunctionDef):
-            for sub in ast.walk(node):
-                if isinstance(sub, ast.Call) and isinstance(sub.func, ast.Name) and sub.func.id == node.name:
-                    has_recursion = True
-        elif isinstance(node, ast.Name):
-            names.add(node.id.lower())
-        elif isinstance(node, ast.Attribute):
-            names.add(node.attr.lower())
-            if node.attr == "exp":
-                exp_calls += 1
-        elif isinstance(node, ast.BinOp) and isinstance(node.op, ast.Mod):
-            mod_ops += 1
-
-    joined = " ".join(sorted(names))
-    if any(tok in joined for tok in ("hungarian", "augment", "bipartite", "matching", "min_cost", "flow")):
+    matching_kws = _distinct_keyword_hits(
+        names, tokens,
+        ("hungarian", "augment", "bipartite", "matching", "min_cost", "max_flow", "hopcroft", "dinic", "edmonds", "flow", "match"),
+        exact_tokens=frozenset({"flow", "match"}),
+    )
+    uses_matching_solver = bool((tokens | imported) & _MATCHING_SOLVER_NAMES)
+    if (
+        uses_matching_solver
+        or (fp["has_augmenting_bfs_dfs"] and matching_kws >= 1)
+        or (matching_kws >= 2 and (fp["max_loop_depth"] >= 2 or fp["has_heap_or_deque"] or fp["has_recursion"]))
+        or matching_kws >= 3
+    ):
         return "bipartite_matching_flow"
-    if any(tok in joined for tok in ("lagrang", "subgradient", "spectral", "laplacian", "eigen", "simplex", "dual_bound")):
+
+    spectral_kws = _distinct_keyword_hits(
+        names, tokens,
+        ("lagrang", "subgradient", "spectral", "laplacian", "eigen", "simplex", "dual_bound", "eigval", "svd", "linprog", "milp", "relaxation", "multiplier"),
+    )
+    uses_spectral_lp_solver = bool((tokens | imported) & _SPECTRAL_LP_NAMES)
+    if (
+        uses_spectral_lp_solver
+        or (fp["has_dual_potential_update"] and spectral_kws >= 1)
+        or (spectral_kws >= 2 and (fp["max_loop_depth"] >= 1 or fp["uses_external_solver"]))
+    ):
         return "spectral_relaxation_rounding"
-    if has_recursion or any(tok in joined for tok in ("branch", "backtrack", "bnb", "lru_cache", "memo", "beam")):
+
+    branch_kws = _distinct_keyword_hits(
+        names, tokens,
+        ("branch", "backtrack", "bnb", "lru_cache", "memo", "beam", "prune", "lower_bound", "upper_bound", "kerneliz", "dsatur", "dominance"),
+        exact_tokens=frozenset({"bnb"}),
+    )
+    uses_exact_solver = bool((tokens | imported) & _EXACT_SOLVER_NAMES)
+    if (
+        uses_exact_solver
+        or fp["has_backtrack_pruning"]
+        or (fp["has_recursion"] and (branch_kws >= 1 or fp["max_loop_depth"] >= 1))
+        or (branch_kws >= 2 and (fp["max_loop_depth"] >= 2 or fp["has_heap_or_deque"] or fp["has_recursion"]))
+    ):
         return "exact_branch_and_reduce"
-    if mod_ops >= 3 or any(tok in joined for tok in ("frobenius", "finite_field", "galois", "coset", "orbit", "quotient", "cubic")):
+
+    algebraic_kws = _distinct_keyword_hits(
+        names, tokens,
+        ("frobenius", "finite_field", "galois", "coset", "orbit", "quotient", "cubic", "residue", "cyclotomic", "gf", "modular", "poly", "polynomial"),
+        exact_tokens=frozenset({"gf", "poly"}),
+    )
+    uses_algebraic_solver = "sympy" in imported or "galois" in imported
+    if (
+        uses_algebraic_solver
+        or (mod_ops >= 3 and fp["mod_arith_density"] >= 0.08 and (fp["max_loop_depth"] >= 1 or algebraic_kws >= 1))
+        or (mod_ops >= 2 and fp["mod_arith_density"] >= 0.12 and fp["max_loop_depth"] >= 1)
+        or (mod_ops >= 2 and algebraic_kws >= 1 and fp["mod_arith_density"] >= 0.04)
+        or (algebraic_kws >= 2 and (mod_ops >= 1 or fp["function_count"] >= 1))
+    ):
         return "algebraic_modular_group"
-    if exp_calls > 0 or any(tok in joined for tok in ("anneal", "temperature", "tabu", "destroy", "lns", "ruin")):
+
+    meta_kws = _distinct_keyword_hits(
+        names, tokens,
+        ("anneal", "temperature", "tabu", "destroy", "lns", "ruin", "reheat", "metropolis", "crossover", "mutation", "population"),
+        exact_tokens=frozenset({"lns"}),
+    )
+    if (fp["has_exp_or_anneal"] and (fp["max_loop_depth"] >= 1 or meta_kws >= 1)) or (meta_kws >= 2 and fp["max_loop_depth"] >= 1):
         return "metaheuristic_population"
-    if any(tok in joined for tok in ("greedy", "swap", "recolor", "local", "weight", "pressure", "prune", "descent")):
+
+    greedy_kws = _distinct_keyword_hits(
+        names, tokens,
+        ("greedy", "swap", "recolor", "local", "weight", "pressure", "prune", "descent", "degree", "ratio", "score", "heuristic"),
+    )
+    if (greedy_kws >= 1 and (fp["max_loop_depth"] >= 1 or has_sort_call)) or greedy_kws >= 2:
         return "greedy_local_search"
+
     return "general_constructive"
 
 
@@ -122,6 +510,7 @@ class ParadigmDirective:
             f"- Required Algorithmic Refactoring: {self.mechanism}",
             f"- Anti-Pattern Warning: {self.anti_pattern}",
             "- Instruction: Do NOT submit minor weight/threshold tweaks on the parent; implement the target structural paradigm while keeping valid fallback guarantees.",
+            "- Structural Refactor Permission: You may replace the entire `def solve` function body (matching `def solve` and adding required imports/helpers) in a single clean `<<<<<<< SEARCH ... ======= ... >>>>>>> REPLACE` block rather than piecemeal line diffs.",
         ])
         return "\n".join(lines)
 

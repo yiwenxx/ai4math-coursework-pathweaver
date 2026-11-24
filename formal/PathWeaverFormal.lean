@@ -16,3 +16,4 @@ import PathWeaverFormal.NineColorCycle
 import PathWeaverFormal.NineColorInterval
 import PathWeaverFormal.CyclicTailProduct
 import PathWeaverFormal.ForcedRainbow
+import PathWeaverFormal.LratBridge

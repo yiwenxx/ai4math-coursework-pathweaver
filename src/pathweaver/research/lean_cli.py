@@ -7,6 +7,8 @@ from typing import Any
 from pathweaver.core.contracts import EvidenceLevel, read_strict_json, write_json
 from pathweaver.research.claims import ClaimLedger
 from pathweaver.research.formal_verifier import lean_toolchain_status, verify_formal_proof
+from pathweaver.research.lean_repair import repair_lean_proof
+from pathweaver.research.premise_retrieval import PremiseIndex
 
 
 def add_lean_parser(subparsers: Any) -> None:
@@ -55,6 +57,25 @@ def add_lean_parser(subparsers: Any) -> None:
     admit.add_argument("--summary", help="Short summary of the verified Lean theorem")
     admit.add_argument("--timeout", type=float, default=60.0)
     admit.add_argument("--apply", action="store_true", help="Write the new formal_proof entry into --bundle")
+
+    premises = commands.add_parser(
+        "premises",
+        help="Search indexed Lean 4 theorems and definitions in PathWeaverFormal",
+    )
+    premises.add_argument("query", help="Search query (Lean signature, type, or identifier keywords)")
+    premises.add_argument("--top-k", type=int, default=8, help="Maximum number of results to return")
+    premises.add_argument("--project-dir", type=Path, help="Optional Lake project or Lean source directory")
+    premises.add_argument("--imports", nargs="*", default=(), help="Optional imported modules to boost")
+
+    repair = commands.add_parser(
+        "repair",
+        help="Attempt automatic hole filling and failing tactic repair on a Lean 4 candidate proof",
+    )
+    repair.add_argument("instance", type=Path, help="Lean proof task instance JSON file")
+    repair.add_argument("candidate", type=Path, help="Candidate Lean 4 proof source file (.lean)")
+    repair.add_argument("--output", type=Path, help="Optional output path for repaired Lean source")
+    repair.add_argument("--timeout", type=float, default=30.0, help="Repair time budget in seconds")
+    repair.add_argument("--no-warm-server", action="store_true", help="Disable persistent warm LSP server")
 
 
 def _cmd_check(args: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
@@ -171,6 +192,33 @@ def _cmd_admit_claim(args: argparse.Namespace, parser: argparse.ArgumentParser) 
     })
 
 
+def _cmd_premises(args: argparse.Namespace) -> None:
+    index = PremiseIndex(args.project_dir)
+    results = index.search(args.query, imports=tuple(args.imports or ()), top_k=args.top_k)
+    write_json({"query": args.query, "top_k": args.top_k, "results": results})
+
+
+def _cmd_repair(args: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
+    instance = read_strict_json(args.instance)
+    candidate_source = args.candidate.read_bytes().decode("utf-8-sig")
+    res = repair_lean_proof(
+        instance,
+        candidate_source,
+        wall_seconds=args.timeout,
+        use_warm_server=not args.no_warm_server,
+    )
+    if args.output is not None:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(res["repaired_source"], encoding="utf-8", newline="\n")
+    verdict = res.get("verdict")
+    payload = {k: v for k, v in res.items() if k != "verdict"}
+    payload["output"] = str(args.output) if args.output is not None else None
+    payload["verification"] = verdict.as_dict() if verdict is not None else None
+    write_json(payload)
+    if res.get("status") == "backend_unavailable":
+        parser.exit(1)
+
+
 def run_lean_command(args: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
     try:
         if args.lean_command == "info":
@@ -183,5 +231,9 @@ def run_lean_command(args: argparse.Namespace, parser: argparse.ArgumentParser) 
             _cmd_export_cert(args, parser)
         elif args.lean_command == "admit-claim":
             _cmd_admit_claim(args, parser)
+        elif args.lean_command == "premises":
+            _cmd_premises(args)
+        elif args.lean_command == "repair":
+            _cmd_repair(args, parser)
     except (OSError, ValueError, TypeError) as error:
         parser.exit(2, f"Lean command error: {error}\n")

@@ -4,6 +4,7 @@ from typing import Any
 
 from pathweaver.core.contracts import EvidenceLevel, IsolationError
 from pathweaver.research.formal_verifier import audit_formal_source
+from pathweaver.research.premise_retrieval import search_premises
 
 from .evaluator import (
     LeanBackendUnavailableError,
@@ -33,6 +34,25 @@ class LeanProofDiscoveryTask:
         }
         if instance.project_dir is not None:
             data["project_dir"] = instance.project_dir
+        if instance.imports or instance.project_dir is not None:
+            try:
+                premises = search_premises(
+                    instance.statement,
+                    imports=instance.imports,
+                    project_dir=instance.project_dir,
+                    top_k=4,
+                )
+            except Exception:
+                premises = []
+            if premises:
+                data["available_premises"] = [
+                    {
+                        "name": item["name"],
+                        "module": item["module"],
+                        "signature": item["signature"],
+                    }
+                    for item in premises
+                ]
         return {
             "schema_version": SCHEMA_VERSION,
             "task_id": TASK_ID,
@@ -64,8 +84,8 @@ class LeanProofDiscoveryTask:
                 "id": "structured_lemma_decomposition",
                 "regime": "structured_lemma_decomposition",
                 "title": "Intermediate `have` Subgoal Decomposition",
-                "mechanism": "Decompose the goal into small named `have` steps (`have h1 : ... := by ...`) so each subgoal closes cleanly.",
-                "anti_pattern": "Do not emit `sorry` or `admit` in subgoals.",
+                "mechanism": "Decompose the goal into type-checked intermediate `have` steps (`have h_k : ... := by ...`); closing proved `have` steps strictly lowers `remaining_burden` even before all `sorry` leaves are closed.",
+                "anti_pattern": "Do not spam raw unproved `sorry` placeholders without proved intermediate `have` steps, and never emit `admit`.",
             },
         )
 
@@ -81,8 +101,14 @@ class LeanProofDiscoveryTask:
         *,
         wall_seconds: float = 60.0,
         seed: int = 0,
+        docker_image: str | None = None,
+        sandbox_mode: str = "local",
     ):
         del seed
+        if sandbox_mode == "docker" and not docker_image:
+            raise IsolationError(
+                "LeanProofDiscoveryTask requires sandbox.lean_docker_image or sandbox.image when sandbox.mode='docker'"
+            )
         allow_sorry = bool(instance["data"].get("allow_sorry_seed", True))
         try:
             result = evaluate_lean_source(
@@ -90,15 +116,18 @@ class LeanProofDiscoveryTask:
                 source,
                 allow_sorry_search=allow_sorry,
                 wall_seconds=wall_seconds,
+                docker_image=docker_image,
+                use_warm_server=(docker_image is None),
                 raise_on_unavailable=True,
             )
         except LeanBackendUnavailableError as error:
             raise IsolationError(str(error)) from error
+        final_source = str(result.diagnostics.get("repaired_source", source))
         solution = {
             "schema_version": SCHEMA_VERSION,
             "task_id": TASK_ID,
             "instance_id": instance["instance_id"],
-            "solution": {"proof_source": source},
+            "solution": {"proof_source": final_source},
         }
         return solution, result
 
@@ -116,7 +145,7 @@ class LeanProofDiscoveryTask:
             }
             for msg in (diag.get("lean_messages") or [])[:4]
         ]
-        return {
+        payload: dict[str, Any] = {
             "feasible": result.feasible,
             "formal_verified": bool(diag.get("formal_verified")),
             "evidence": result.evidence.value if hasattr(result.evidence, "value") else str(result.evidence),
@@ -127,6 +156,13 @@ class LeanProofDiscoveryTask:
             "violations": list(result.violations)[:4],
             "lean_messages": messages,
         }
+        if "verified_steps" in diag:
+            payload["verified_steps"] = diag["verified_steps"]
+        if "remaining_burden" in diag:
+            payload["remaining_burden"] = diag["remaining_burden"]
+        if diag.get("repaired"):
+            payload["repaired"] = True
+        return payload
 
     def certificate(self, instance: dict[str, Any], solution: dict[str, Any], result):
         if not result.feasible or result.evidence != EvidenceLevel.FORMAL_VERIFIED:
@@ -144,9 +180,9 @@ class LeanProofDiscoveryTask:
         return """Write Lean 4 proof code (inside a ```lean code block or SEARCH/REPLACE diff) to formally prove the target theorem.
 Rules:
 1. Define `theorem target_theorem ...` (or the instance's named theorem) matching the locked specification, OR provide helper lemmas followed by `theorem target_theorem ...`.
-2. Forbidden constructs (rejected immediately): `sorry`, `admit`, `axiom`, `opaque`, `unsafe`, `@[implemented_by]`, `@[extern]`, `native_decide`, `#eval`, `#exec`, `initialize`, `elab`, `macro_rules`, `IO.`, `System.`, `import`, `set_option`.
+2. Forbidden constructs (rejected immediately): `admit`, `axiom`, `opaque`, `unsafe`, `@[implemented_by]`, `@[extern]`, `native_decide`, `#eval`, `#exec`, `initialize`, `syntax`, `macro`, `elab`, `elab_rules`, `macro_rules`, `notation`, `infix`/`prefix`/`postfix`, `run_cmd`, `by_elab`, `Lean.Environment`/`MetavarContext`/`Expr`, `compile_inductive`, `IO.`, `System.`, `dbg_trace`, `import`, `set_option`.
 3. Only standard Lean kernel axioms (`propext`, `Classical.choice`, `Quot.sound`) are permitted.
 4. Verification locks the exact theorem type outside your namespace and checks `#print axioms` on the host.
-5. Minimize `(incomplete_flag, sorry_count, proof_bytes)`. Complete `sorry`-free proofs achieve `incomplete_flag = 0` and `formal_verified` status.
+5. Minimize `(incomplete_flag, remaining_burden, proof_bytes)`. Complete `sorry`-free proofs achieve `incomplete_flag = 0` (`formal_verified`). During search (`allow_sorry_seed=True`), decomposing a theorem into type-checked `have h_k : ... := by ...` steps strictly lowers `remaining_burden` even before all `sorry` leaves are closed, whereas raw unproved `sorry` spamming increases penalty.
 6. Feedback reports exact Lean line/column errors and `unsolved goals` tactic states.
 """

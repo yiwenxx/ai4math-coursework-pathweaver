@@ -85,7 +85,12 @@ class DiscoveryTask(Protocol):
     - ``prepare_verifier(instance)`` / ``verify_prepared(prepared, solution, *, parent_solution=None)``
     - ``paradigm_catalog()``
     - ``reduce_instance(instance, evaluation, *, max_size=...)``
+    - ``subset_elements(instance)`` / ``rebuild_from_subset(instance, kept)`` (for ``ddmin``)
+    - ``permute_instance(instance, *, seed=...)`` (for isomorphic metamorphic checks)
+    - ``generate_adversarial_instances(*, seed=..., count=...)``
+    - ``calibrate_instance_delays(instance, edge_measurements)``
     - ``certificate(instance, solution, evaluation)``
+    Constructive two-phase search tasks also implement ``ConstructiveWitnessTask`` in ``core/constructive.py``.
     """
     task_id: str
 

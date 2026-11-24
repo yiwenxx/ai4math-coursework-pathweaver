@@ -1,8 +1,11 @@
 """Trusted JSP-000158 discovery admission, exact bounds and failure feedback."""
+from collections.abc import Mapping
 from dataclasses import asdict
+from random import Random
+from typing import Any
 
 from .evaluator import evaluate, evaluate_prepared, prepare_verifier
-from .model import SCHEMA_VERSION, TASK_ID, parse_instance
+from .model import SCHEMA_VERSION, TASK_ID, generate, parse_instance
 
 
 class Jsp158DiscoveryTask:
@@ -98,6 +101,29 @@ class Jsp158DiscoveryTask:
         except ValueError:
             return None
         return self.prepare(raw_reduced)
+
+    def permute_instance(self, instance: Mapping[str, Any], *, seed: int = 1) -> dict[str, Any]:
+        """Return an isomorphic JSP-000158 instance with an unseen instance_id and identical N."""
+        inst = parse_instance(instance)
+        raw_perm = {
+            "schema_version": SCHEMA_VERSION,
+            "task_id": TASK_ID,
+            "instance_id": f"{inst.instance_id}__iso_{seed}",
+            "data": {"n": inst.n},
+        }
+        return self.prepare(raw_perm)
+
+    def generate_adversarial_instances(self, *, seed: int, count: int = 2) -> list[dict[str, Any]]:
+        """Generate unseen small JSP-000158 instances (size 8-16) for active adversarial probing."""
+        rng = Random(seed)
+        results: list[dict[str, Any]] = []
+        for idx in range(max(0, int(count))):
+            size = 8 + rng.randrange(9)
+            sub_seed = seed * 1009 + idx * 97 + 17
+            raw = dict(generate(seed=sub_seed, size=size))
+            raw["instance_id"] = f"jsp158-adv-n{size}-s{seed}-{idx}"
+            results.append(self.prepare(raw))
+        return results
 
     def feedback(self, result):
         diagnostics = result.diagnostics

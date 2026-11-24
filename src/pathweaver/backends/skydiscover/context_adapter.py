@@ -8,13 +8,20 @@ Combines:
 4. Active experiment directives from `ExperimentSelector` and stepping-stone crossover hints.
 """
 from collections.abc import Mapping, Sequence
+from contextvars import ContextVar
 from pathlib import Path
+import re
 from typing import Any
 
 from pathweaver.research.context import build_context
 from pathweaver.research.memory.retrieval import MemoryQuery
 from pathweaver.research.memory.store import MemoryStore
 from pathweaver.research.strategy_escape import classify_algorithmic_regime
+
+CURRENT_EXPOSURE_STATE: ContextVar[tuple[tuple[str, ...], int | None]] = ContextVar(
+    "pathweaver_exposure_state",
+    default=((), None),
+)
 
 
 SYSTEM_MEMORY_ADDENDUM = (
@@ -173,6 +180,111 @@ def _stepping_stone_crossover_hint(current_program: Any, context: Mapping[str, A
     return "## PATHWEAVER STEPPING-STONE CROSSOVER HINT\n" + "\n".join(hints[:2])
 
 
+_REGIME_HINT_WORDS: dict[str, tuple[str, ...]] = {
+    "algebraic_modular_group": (
+        "cyclic", "frobenius", "coset", "modular", "quotient",
+        "finite field", "orbit", "power map", "fourier", "stabilizer",
+    ),
+    "greedy_local_search": ("greedy", "local search", "1-swap", "single-point", "recolor", "weight"),
+    "bipartite_matching_flow": ("hungarian", "bipartite", "matching", "hall", "flow", "augmenting"),
+    "spectral_relaxation_rounding": ("lagrangian", "subgradient", "spectral", "laplacian", "relaxation", "dual"),
+    "exact_branch_and_reduce": ("branch-and-bound", "branch and bound", "backtracking", "kernelization", "dsatur", "prune"),
+    "metaheuristic_population": ("annealing", "tabu", "destroy", "lns", "ruin", "population"),
+}
+
+
+def _select_relevant_barriers(
+    barriers: Sequence[Mapping[str, Any]],
+    *,
+    current_regime: str = "",
+    target_regime: str = "",
+    query_text: str = "",
+    tags: Sequence[str] = (),
+    bottlenecks: Sequence[str] = (),
+    limit: int = 4,
+) -> str:
+    if not barriers or limit <= 0:
+        return ""
+    query_blob = f"{query_text} {' '.join(tags)} {' '.join(bottlenecks)}".lower()
+    query_tokens = set(re.findall(r"[a-z0-9_]{3,}", query_blob))
+
+    def _matches_regime(regime: str, barrier: Mapping[str, Any], text_low: str) -> bool:
+        if not regime:
+            return False
+        raw_regimes = barrier.get("regimes")
+        if isinstance(raw_regimes, (list, tuple, set)) and regime in raw_regimes:
+            return True
+        if regime in text_low or regime.replace("_", " ") in text_low:
+            return True
+        return any(hint in text_low for hint in _REGIME_HINT_WORDS.get(regime, ()))
+
+    scored: list[tuple[float, int, Mapping[str, Any]]] = []
+    for idx, barrier in enumerate(barriers):
+        if not isinstance(barrier, Mapping):
+            continue
+        cid = str(barrier.get("claim_id", "") or "")
+        status = str(barrier.get("status", "verified") or "verified")
+        stmt = str(barrier.get("statement", "") or "")
+        scope = str(barrier.get("scope", "") or "")
+        cex = str(barrier.get("counterexample", "") or "")
+        text_low = f"{cid} {stmt} {scope} {cex}".lower()
+        b_tokens = set(re.findall(r"[a-z0-9_]{3,}", text_low))
+
+        score = 0.0
+        if _matches_regime(current_regime, barrier, text_low):
+            score += 5.0
+        if target_regime and target_regime != current_regime and _matches_regime(target_regime, barrier, text_low):
+            score += 4.0
+        score += 1.5 * len(query_tokens & b_tokens)
+        if status == "refuted":
+            score += 1.0 if cex else 0.5
+        elif status in {"formally_verified", "machine_checked", "reviewed"}:
+            score += 0.8
+        imp = barrier.get("impact_score")
+        if isinstance(imp, (int, float)) and not isinstance(imp, bool):
+            score += 0.1 * min(10.0, max(0.0, float(imp)))
+        scored.append((-score, idx, barrier))
+
+    if not scored:
+        return ""
+    scored.sort(key=lambda item: (item[0], item[1]))
+    lines = ["## RELEVANT VERIFIED OBSTRUCTIONS"]
+    for _, _, item in scored[:limit]:
+        line = f"- [{item.get('status', 'verified')}] {item.get('claim_id', '')}: {item.get('statement', '')}"
+        scope = str(item.get("scope", "") or "").strip()
+        if scope:
+            line += f" [scope: {scope}]"
+        cex = str(item.get("counterexample", "") or "").strip()
+        if cex:
+            line += f" (counterexample: {cex})"
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def _truncate_text(text: str, limit: int) -> str:
+    if limit <= 0 or not text:
+        return ""
+    if len(text) <= limit:
+        return text
+    marker = "\n...[truncated]"
+    if limit <= len(marker) + 16:
+        return text[:limit]
+    cut = text[: limit - len(marker)]
+    nl = cut.rfind("\n")
+    if nl >= len(cut) // 2:
+        cut = cut[:nl]
+    return cut + marker
+
+
+def _assemble_user(base_user: str, sections: Sequence[str]) -> str:
+    extra = "\n\n".join(s for s in sections if s)
+    if not extra:
+        return base_user
+    if not base_user:
+        return extra
+    return base_user + "\n\n" + extra
+
+
 class MemoryContextBuilder:
     """Duck-typed wrapper for the pinned build_prompt(program, context, **kwargs) API.
 
@@ -188,7 +300,9 @@ class MemoryContextBuilder:
                  stagnation_monitor: Any = None,
                  paradigm_catalog: Sequence[dict[str, str]] = (),
                  obstructed_regimes: Sequence[str] = (),
-                 include_static_rules: bool = False):
+                 include_static_rules: bool = False,
+                 all_verified_barriers: Sequence[Mapping[str, Any]] = (),
+                 max_prompt_chars: int = 48000):
         self.base_builder = base_builder
         self.database = Path(database)
         self.run_id = run_id
@@ -206,11 +320,37 @@ class MemoryContextBuilder:
         self.extra_obstructed_regimes: set[str] = set()
         self.active_experiment_directive: str = ""
         self.include_static_rules = include_static_rules
+        self.all_verified_barriers: tuple[dict[str, Any], ...] = tuple(
+            dict(b) for b in all_verified_barriers if isinstance(b, Mapping)
+        )
+        self.max_prompt_chars: int = max(1, int(max_prompt_chars))
         self.last_exposure_ids: tuple[str, ...] = ()
         self.last_through_sequence: int | None = None
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self.base_builder, name)
+
+    def get_active_exposures(self) -> tuple[tuple[str, ...], int | None]:
+        state_ids, state_seq = CURRENT_EXPOSURE_STATE.get()
+        if state_ids or state_seq is not None:
+            return state_ids, state_seq
+        return self.last_exposure_ids, self.last_through_sequence
+
+    def update_claim_constraints(self, claim_constraints: Mapping[str, Any]) -> None:
+        if not isinstance(claim_constraints, Mapping):
+            return
+        obstructed = claim_constraints.get("obstructed_regimes")
+        if isinstance(obstructed, Sequence) and not isinstance(obstructed, (str, bytes)):
+            self.obstructed_regimes = tuple(
+                str(r) for r in obstructed if isinstance(r, str) and r.strip()
+            )
+        raw_barriers = claim_constraints.get("all_verified_barriers")
+        if raw_barriers is None:
+            raw_barriers = claim_constraints.get("verified_barriers")
+        if isinstance(raw_barriers, Sequence) and not isinstance(raw_barriers, (str, bytes)):
+            self.all_verified_barriers = tuple(
+                dict(b) for b in raw_barriers if isinstance(b, Mapping)
+            )
 
     def build_prompt(self, current_program: Any, context: dict[str, Any] | None = None,
                      **kwargs: Any) -> dict[str, str]:
@@ -218,17 +358,18 @@ class MemoryContextBuilder:
         self.last_exposure_ids = ()
         self.last_through_sequence = None
 
-        extra_sections: list[str] = []
+        query_text = self.query_text
+        tags = tuple(self.tags)
+        bottlenecks, current_regime = _program_structural_signals(current_program, context)
+        if self.dynamic_diagnostics:
+            dyn_text, dyn_tags = _dynamic_query_signals(current_program, context)
+            if dyn_text:
+                query_text = f"{query_text} {dyn_text}".strip()
+            if dyn_tags:
+                tags = tuple(dict.fromkeys((*tags, *dyn_tags)))
+
+        memory_section = ""
         if self.enabled:
-            query_text = self.query_text
-            tags = tuple(self.tags)
-            bottlenecks, current_regime = _program_structural_signals(current_program, context)
-            if self.dynamic_diagnostics:
-                dyn_text, dyn_tags = _dynamic_query_signals(current_program, context)
-                if dyn_text:
-                    query_text = f"{query_text} {dyn_text}".strip()
-                if dyn_tags:
-                    tags = tuple(dict.fromkeys((*tags, *dyn_tags)))
             with MemoryStore(self.database, readonly=True) as store:
                 packet = build_context(
                     store,
@@ -247,15 +388,17 @@ class MemoryContextBuilder:
                 )
             self.last_exposure_ids = packet.record_ids
             self.last_through_sequence = packet.through_sequence
-            extra_sections.append("## PATHWEAVER TRAINING MEMORY (EVIDENCE DATA)\n" + packet.text)
+            memory_section = "## PATHWEAVER TRAINING MEMORY (EVIDENCE DATA)\n" + packet.text
 
-        if self.active_experiment_directive:
-            extra_sections.append("## PATHWEAVER ACTIVE EXPERIMENT DIRECTIVE\n" + self.active_experiment_directive)
-
+        experiment_section = (
+            "## PATHWEAVER ACTIVE EXPERIMENT DIRECTIVE\n" + self.active_experiment_directive
+            if self.active_experiment_directive
+            else ""
+        )
         crossover_hint = _stepping_stone_crossover_hint(current_program, context)
-        if crossover_hint:
-            extra_sections.append(crossover_hint)
 
+        paradigm_section = ""
+        target_regime = ""
         if self.stagnation_monitor is not None:
             merged_obstructed = tuple(sorted(set(self.obstructed_regimes) | self.extra_obstructed_regimes))
             directive = self.stagnation_monitor.detect_local_trap(
@@ -263,17 +406,79 @@ class MemoryContextBuilder:
                 obstructed_regimes=merged_obstructed,
             )
             if directive is not None:
-                extra_sections.append(directive.format_prompt_block())
+                paradigm_section = directive.format_prompt_block()
+                target_regime = directive.recommended_regime
 
-        if extra_sections:
+        barrier_section = _select_relevant_barriers(
+            self.all_verified_barriers,
+            current_regime=current_regime,
+            target_regime=target_regime,
+            query_text=query_text,
+            tags=tags,
+            bottlenecks=bottlenecks,
+            limit=4,
+        )
+
+        # Prompt Budget Arbiter: enforce max_prompt_chars while protecting directives.
+        system_text = str(prompt.get("system", ""))
+        base_user = str(prompt.get("user", ""))
+
+        def _assembled() -> str:
             # Separate from artifacts['feedback'], which pinned AdaEvolve truncates to 2000 chars.
-            prompt["user"] += "\n\n" + "\n\n".join(extra_sections)
+            return _assemble_user(
+                base_user,
+                (memory_section, barrier_section, experiment_section, crossover_hint, paradigm_section),
+            )
+
+        def _over_budget() -> bool:
+            return len(system_text) + len(_assembled()) > self.max_prompt_chars
+
+        if _over_budget():
+            crossover_hint = ""
+        if _over_budget() and memory_section:
+            other_user = _assemble_user(base_user, (barrier_section, experiment_section, paradigm_section))
+            sep = 2 if other_user else 0
+            avail_mem = self.max_prompt_chars - len(system_text) - len(other_user) - sep
+            if avail_mem >= 200:
+                memory_section = _truncate_text(memory_section, avail_mem)
+            else:
+                memory_section = ""
+                self.last_exposure_ids = ()
+                self.last_through_sequence = None
+        if _over_budget() and base_user:
+            protected_suffix = _assemble_user("", (barrier_section, experiment_section, paradigm_section))
+            sep = 2 if protected_suffix else 0
+            avail_base = self.max_prompt_chars - len(system_text) - len(protected_suffix) - sep
+            base_user = _truncate_text(base_user, max(0, avail_base))
+        if _over_budget() and barrier_section:
+            directives_suffix = _assemble_user("", (experiment_section, paradigm_section))
+            sep = 2 if directives_suffix else 0
+            avail_barriers = self.max_prompt_chars - len(system_text) - len(directives_suffix) - sep
+            barrier_section = _truncate_text(barrier_section, max(0, avail_barriers)) if avail_barriers >= 80 else ""
+
+        prompt["user"] = _assembled()
+        CURRENT_EXPOSURE_STATE.set((self.last_exposure_ids, self.last_through_sequence))
         return prompt
 
 
-def attach_memory(controller: Any, database: str | Path, run_id: str, **options: Any) -> MemoryContextBuilder:
+def attach_memory(
+    controller: Any,
+    database: str | Path,
+    run_id: str,
+    *,
+    all_verified_barriers: Sequence[Mapping[str, Any]] = (),
+    max_prompt_chars: int = 48000,
+    **options: Any,
+) -> MemoryContextBuilder:
     """Attach bounded training memory to an initialized SkyDiscover controller."""
-    adapter = MemoryContextBuilder(controller.context_builder, database, run_id, **options)
+    adapter = MemoryContextBuilder(
+        controller.context_builder,
+        database,
+        run_id,
+        all_verified_barriers=all_verified_barriers,
+        max_prompt_chars=max_prompt_chars,
+        **options,
+    )
     controller.context_builder = adapter
     if hasattr(controller, "prompt_sampler") and hasattr(controller.prompt_sampler, "context_builder"):
         controller.prompt_sampler.context_builder = adapter

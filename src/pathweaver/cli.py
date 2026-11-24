@@ -46,7 +46,7 @@ def main() -> None:
         return
     if args.command == "info":
         print(f"PathWeaver {__version__}: streamlined verifiable AI4Math core")
-        print("Tasks: eda (primal-dual/Hall finite_optimal certificates), wvc (transfer pack + exact solver), jsp158 (4-AP verifier + ff_probe + q=121 certificate), lean_proof (Lean 4 formal proving).")
-        print("Core: exact integer-tuple + Pareto stepping-stone ordering, dynamic diagnostic memory, ClaimLedger, and Lean 4 formal verification.")
+        print("Tasks: eda (primal-dual/Hall finite_optimal certificates), wvc (transfer pack + exact solver), jsp158 (4-AP verifier + PatternBoost + ff_probe + q=121 certificate), lean_proof (warm Lean 4 LSP + Apollo repair + premise retrieval).")
+        print("Core: MAP-Elites exact integer-tuple + Pareto ordering, ddmin & active adversarial selector, LRAT/VIPR/Nullstellensatz certificate hub, causal epistemic memory, ClaimLedger/Blueprint, and metamorphic + sealed validation gates.")
         return
     print(describe_tasks(as_json=args.json))

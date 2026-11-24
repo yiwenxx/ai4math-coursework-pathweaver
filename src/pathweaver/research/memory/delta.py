@@ -149,7 +149,9 @@ def compute_attempt_delta(
 
     regime_transition = f"{parent_regime}->{regime}" if parent_regime else regime
 
-    if outcome in {"malformed", "timeout", "exception"}:
+    if outcome == "pruned_dominated":
+        signal_tier = "dominated_pruned"
+    elif outcome in {"malformed", "timeout", "exception"}:
         signal_tier = "execution_noise"
     elif (
         outcome == "feasible"

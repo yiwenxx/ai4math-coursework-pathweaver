@@ -1,8 +1,12 @@
 """Transactional, append-only SQLite ledger with revision and evidence links."""
+from collections import OrderedDict
+import copy
 from datetime import datetime, timezone
 import json
+import os
 from pathlib import Path
 import sqlite3
+import threading
 from typing import Any, Mapping
 from uuid import uuid4
 
@@ -12,6 +16,25 @@ from pathweaver.core.research_records import (
 )
 
 SCHEMA_VERSION = 2
+_CACHE_LOCK = threading.RLock()
+_SNAPSHOT_CACHE: OrderedDict[tuple[str, int, int, int, str | None], tuple[ResearchEvent, ...]] = OrderedDict()
+_INTEGRITY_CACHE: OrderedDict[tuple[str, int, int, int], dict[str, dict[str, Any]]] = OrderedDict()
+_MAX_STORE_CACHE = 32
+
+
+def _file_sig(path: Path) -> tuple[int, int]:
+    try:
+        st = os.stat(path)
+        return (st.st_mtime_ns, st.st_size)
+    except OSError:
+        return (0, 0)
+
+
+def _evict_path_cache(path_str: str) -> None:
+    with _CACHE_LOCK:
+        for cache in (_SNAPSHOT_CACHE, _INTEGRITY_CACHE):
+            for key in [k for k in cache if k[0] == path_str]:
+                cache.pop(key, None)
 _SCHEMA = f"""
 CREATE TABLE events (
     sequence INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -89,6 +112,13 @@ class MemoryStore:
 
     def snapshot(self, *, as_of: int | None = None, run_id: str | None = None) -> list[ResearchEvent]:
         cutoff = self.sequence if as_of is None else as_of
+        mtime_ns, size_bytes = _file_sig(self.path)
+        cache_key = (str(self.path), mtime_ns, size_bytes, cutoff, run_id)
+        with _CACHE_LOCK:
+            cached = _SNAPSHOT_CACHE.get(cache_key)
+            if cached is not None:
+                _SNAPSHOT_CACHE.move_to_end(cache_key)
+                return list(cached)
         sql = """SELECT e.* FROM events e
                  WHERE e.sequence<=? AND NOT EXISTS
                  (SELECT 1 FROM events n WHERE n.record_id=e.record_id
@@ -97,7 +127,13 @@ class MemoryStore:
         if run_id is not None:
             sql += " AND e.run_id=?"
             params.append(run_id)
-        return [self._event(r) for r in self.connection.execute(sql + " ORDER BY e.sequence", params)]
+        rows = tuple(self._event(r) for r in self.connection.execute(sql + " ORDER BY e.sequence", params))
+        with _CACHE_LOCK:
+            _SNAPSHOT_CACHE[cache_key] = rows
+            _SNAPSHOT_CACHE.move_to_end(cache_key)
+            while len(_SNAPSHOT_CACHE) > _MAX_STORE_CACHE:
+                _SNAPSHOT_CACHE.popitem(last=False)
+        return list(rows)
 
     def integrity_details(
         self,
@@ -116,7 +152,17 @@ class MemoryStore:
           prompt-window ``context_exposure_ids`` included a fatally revoked/tainted record.
         - ``active``: clean evidence and clean context exposure.
         """
-        records = self.snapshot(as_of=as_of) if records is None else records
+        cache_key: tuple[str, int, int, int] | None = None
+        if records is None:
+            cutoff = self.sequence if as_of is None else as_of
+            mtime_ns, size_bytes = _file_sig(self.path)
+            cache_key = (str(self.path), mtime_ns, size_bytes, cutoff)
+            with _CACHE_LOCK:
+                cached = _INTEGRITY_CACHE.get(cache_key)
+                if cached is not None:
+                    _INTEGRITY_CACHE.move_to_end(cache_key)
+                    return copy.deepcopy(cached)
+            records = self.snapshot(as_of=cutoff)
         by_id = {e.record_id: e for e in records}
         invalid_meta: dict[str, dict[str, Any]] = {}
         for event in records:
@@ -230,6 +276,12 @@ class MemoryStore:
                     changed = True
             if not changed:
                 break
+        if cache_key is not None:
+            with _CACHE_LOCK:
+                _INTEGRITY_CACHE[cache_key] = copy.deepcopy(details)
+                _INTEGRITY_CACHE.move_to_end(cache_key)
+                while len(_INTEGRITY_CACHE) > _MAX_STORE_CACHE:
+                    _INTEGRITY_CACHE.popitem(last=False)
         return details
 
     def integrity(self, *, as_of: int | None = None) -> dict[str, str]:
@@ -277,6 +329,7 @@ class MemoryStore:
             )
             result = self.get(record_id)
             self.connection.execute("COMMIT")
+            _evict_path_cache(str(self.path))
             return result
         except BaseException:
             self.connection.execute("ROLLBACK")

@@ -1,7 +1,11 @@
 """Trusted weighted vertex cover discovery admission, bounds and feedback."""
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict
+from random import Random
+from typing import Any
 
 from .evaluator import evaluate, evaluate_prepared, prepare_verifier
+from .generator import generate_instance
 from .model import SCHEMA_VERSION, TASK_ID, parse_instance
 
 
@@ -131,6 +135,78 @@ class WeightedVertexCoverDiscoveryTask:
         except ValueError:
             return None
         return self.prepare(raw_reduced)
+
+    def permute_instance(self, instance: Mapping[str, Any], *, seed: int = 1) -> dict[str, Any]:
+        """Return an isomorphic WVC instance with relabeled v0.. IDs, shuffled lists, and swapped edge endpoints."""
+        inst = parse_instance(instance)
+        rng = Random(seed)
+
+        vids = list(inst.vertex_ids)
+        rng.shuffle(vids)
+        v_map = {old: f"v{i}" for i, old in enumerate(vids)}
+
+        vertices = [v_map[old] for old in vids]
+        rng.shuffle(vertices)
+        weights = {v_map[old]: inst.weights[old] for old in inst.vertex_ids}
+        edges: list[list[str]] = []
+        for u, v in inst.edges:
+            nu, nv = v_map[u], v_map[v]
+            edges.append([nv, nu] if rng.randrange(2) else [nu, nv])
+        rng.shuffle(edges)
+
+        raw_perm = {
+            "schema_version": SCHEMA_VERSION,
+            "task_id": TASK_ID,
+            "instance_id": f"{inst.instance_id}__iso_{seed}",
+            "data": {
+                "vertices": vertices,
+                "weights": weights,
+                "edges": edges,
+            },
+        }
+        parse_instance(raw_perm)
+        return raw_perm
+
+    def subset_elements(self, instance: Mapping[str, Any]) -> list[str]:
+        """Return vertex IDs eligible for delta-debugging subgraph reduction."""
+        inst = parse_instance(instance)
+        return list(inst.vertex_ids)
+
+    def rebuild_from_subset(self, instance: Mapping[str, Any], kept: Sequence[str]) -> dict[str, Any] | None:
+        """Rebuild an induced subgraph from kept vertex IDs if it induces >= 2 edges."""
+        inst = parse_instance(instance)
+        kept_set = {str(v) for v in kept}
+        core = [v for v in inst.vertex_ids if v in kept_set]
+        induced_edges = [[u, v] for u, v in inst.edges if u in kept_set and v in kept_set]
+        if not core or len(induced_edges) < 2:
+            return None
+        raw_reduced = {
+            "schema_version": SCHEMA_VERSION,
+            "task_id": TASK_ID,
+            "instance_id": f"{inst.instance_id}__ddmin_{len(core)}",
+            "data": {
+                "vertices": core,
+                "weights": {vid: inst.weights[vid] for vid in core},
+                "edges": induced_edges,
+            },
+        }
+        try:
+            parse_instance(raw_reduced)
+        except ValueError:
+            return None
+        return self.prepare(raw_reduced)
+
+    def generate_adversarial_instances(self, *, seed: int, count: int = 2) -> list[dict[str, Any]]:
+        """Generate unseen small WVC instances (size 8-16) for active adversarial probing."""
+        rng = Random(seed)
+        results: list[dict[str, Any]] = []
+        for idx in range(max(0, int(count))):
+            size = 8 + rng.randrange(9)
+            sub_seed = seed * 1009 + idx * 97 + 17
+            raw = dict(generate_instance(seed=sub_seed, size=size))
+            raw["instance_id"] = f"wvc-adv-s{seed}-{idx}-n{size}"
+            results.append(self.prepare(raw))
+        return results
 
     def feedback(self, result):
         d = result.diagnostics

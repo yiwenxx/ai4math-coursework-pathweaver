@@ -11,9 +11,12 @@ archives simultaneously maintain an exact-integer Pareto stepping-stone layer:
   secondary-objective mechanisms into the primary-objective leader.
 No upstream module, function or class is monkeypatched.
 """
+from collections.abc import Mapping
+from hashlib import sha256
 from pathlib import Path
 
 from pathweaver.core.contracts import atomic_json as _atomic_json, read_json as _read_json
+from pathweaver.research.strategy_escape import classify_algorithmic_regime
 
 
 class _QualityKey(tuple):
@@ -50,6 +53,66 @@ def _dominates_exact(vec_a: tuple[int, ...], vec_b: tuple[int, ...]) -> bool:
         if a > b:
             better = True
     return better
+
+
+def _prog_attr(program, name: str, default=None):
+    if isinstance(program, Mapping):
+        return program.get(name, default)
+    return getattr(program, name, default)
+
+
+def _per_instance_tuple(program) -> tuple[tuple[int, ...], ...] | None:
+    """Extract lossless integer per-instance objective matrix as an immutable tuple."""
+    metrics = _prog_attr(program, "metrics")
+    if not isinstance(metrics, Mapping):
+        return None
+    per_inst = metrics.get("per_instance_objectives")
+    if not isinstance(per_inst, (list, tuple)) or not per_inst:
+        return None
+    rows: list[tuple[int, ...]] = []
+    for row in per_inst:
+        if not isinstance(row, (list, tuple)) or not row:
+            return None
+        rows.append(tuple(int(v) for v in row))
+    return tuple(rows)
+
+
+def _behavioral_descriptor(program) -> tuple[str, str, int] | None:
+    """Extract (regime_bucket, win_profile_signature, has_zero_gap_flag) for MAP-Elites QD."""
+    metrics = _prog_attr(program, "metrics")
+    if not isinstance(metrics, Mapping) or metrics.get("validity") != 1:
+        return None
+    per_inst = _per_instance_tuple(program)
+    if not per_inst:
+        return None
+
+    primary = [row[0] for row in per_inst]
+    if len(primary) == 1:
+        win_profile = "single"
+    else:
+        lo = min(primary)
+        hi = max(primary)
+        span = hi - lo
+        if span == 0:
+            win_profile = "flat"
+        else:
+            quartiles = "".join(str(min(3, (4 * (v - lo)) // span)) for v in primary)
+            win_profile = quartiles if len(quartiles) <= 32 else sha256(quartiles.encode("ascii")).hexdigest()[:12]
+
+    artifacts = _prog_attr(program, "artifacts")
+    regime_bucket = ""
+    raw_gap = None
+    if isinstance(artifacts, Mapping):
+        raw_regime = artifacts.get("regime")
+        if isinstance(raw_regime, str) and raw_regime.strip():
+            regime_bucket = raw_regime.strip()
+        raw_gap = artifacts.get("bound_gap")
+    if not regime_bucket:
+        solution = _prog_attr(program, "solution")
+        regime_bucket = classify_algorithmic_regime(solution) if isinstance(solution, str) and solution.strip() else "general_constructive"
+
+    has_zero_gap_flag = 1 if (isinstance(raw_gap, int) and not isinstance(raw_gap, bool) and int(raw_gap) == 0) else 0
+    return (regime_bucket, win_profile, has_zero_gap_flag)
 
 
 def compute_exact_pareto(programs) -> tuple[dict[str, int], dict[str, float]]:
@@ -174,6 +237,53 @@ def create_database(config, ordering, *, stepping_stone_weight: float = 0.45):
             fw = self.config.fitness_weight + self.config.pareto_weight
             return fw * quality_pct + self.config.novelty_weight * novelty_pct
 
+        def _compute_novelty(self, program, all_programs) -> float:
+            others = [p for p in all_programs if p.id != program.id]
+            if not others:
+                return 1.0
+            code_novelty = float(super()._compute_novelty(program, all_programs))
+            vec_a = _per_instance_tuple(program)
+            if vec_a is None:
+                return code_novelty
+
+            desc_a = _behavioral_descriptor(program)
+            flat_a = [v for row in vec_a for v in row]
+            beh_distances: list[float] = []
+            exact_clone = False
+
+            for other in others:
+                vec_b = _per_instance_tuple(other)
+                if vec_b is None:
+                    beh_distances.append(1.0)
+                    continue
+                if vec_b == vec_a:
+                    exact_clone = True
+                    beh_distances.append(0.0)
+                    continue
+                flat_b = [v for row in vec_b for v in row]
+                if len(flat_a) == len(flat_b) and flat_a:
+                    obj_dist = sum(
+                        abs(a - b) / max(1, abs(a), abs(b))
+                        for a, b in zip(flat_a, flat_b)
+                    ) / len(flat_a)
+                else:
+                    obj_dist = 1.0
+                desc_b = _behavioral_descriptor(other)
+                cell_dist = (
+                    0.0
+                    if (desc_a is not None and desc_b is not None and (desc_a[0], desc_a[1]) == (desc_b[0], desc_b[1]))
+                    else 1.0
+                )
+                beh_distances.append(0.65 * obj_dist + 0.35 * cell_dist)
+
+            beh_distances.sort()
+            k = max(1, min(self.config.k_neighbors, len(beh_distances)))
+            beh_novelty = sum(beh_distances[:k]) / k
+            novelty = 0.4 * code_novelty + 0.6 * beh_novelty
+            if exact_clone:
+                novelty *= 0.1
+            return float(novelty)
+
         def _get_protected_ids(self):
             self._ensure_cache_valid()
             protected = set()
@@ -191,6 +301,25 @@ def create_database(config, ordering, *, stepping_stone_weight: float = 0.45):
                 raw_cap = max(1, int(self.config.max_size * 0.25))
                 max_safe = max(0, self.config.max_size - 1 - len(protected))
                 protected.update(front_ids[:min(raw_cap, max_safe)])
+            # Protect best exact-fitness representative per MAP-Elites (regime, win_profile) niche.
+            if self._programs:
+                niche_best: dict[tuple[str, str], str] = {}
+                for pid, prog in self._programs.items():
+                    desc = _behavioral_descriptor(prog)
+                    if desc is None:
+                        continue
+                    cell = (desc[0], desc[1])
+                    cur_best = niche_best.get(cell)
+                    if cur_best is None or (self._get_fitness(prog), pid) > (
+                        self._get_fitness(self._programs[cur_best]),
+                        cur_best,
+                    ):
+                        niche_best[cell] = pid
+                niche_ids = [pid for pid in dict.fromkeys(niche_best.values()) if pid not in protected]
+                niche_ids.sort(key=lambda pid: (self._get_fitness(self._programs[pid]), pid), reverse=True)
+                niche_cap = max(1, int(self.config.max_size * 0.2))
+                max_safe = max(0, self.config.max_size - 1 - len(protected))
+                protected.update(niche_ids[:min(niche_cap, max_safe)])
             return protected
 
         def sample_other_context_programs(self, parent, n: int = 5, top_k_ratio: float = 0.5):

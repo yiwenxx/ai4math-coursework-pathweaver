@@ -1,9 +1,11 @@
 """Budget-aware ExperimentSelector managing L1 witnesses, diagnostic probes, and L3 conjectures."""
+import asyncio
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
 from pathweaver.core.contracts import atomic_json, digest, read_json
+from pathweaver.core.ddmin import ddmin_reduce
 from pathweaver.core.research_records import canonical_json
 from pathweaver.research.claims import build_empirical_conjecture_bundle
 from pathweaver.research.memory.store import MemoryStore
@@ -274,13 +276,75 @@ class ExperimentSelector:
                     d_delta = (d_payload.get("diagnostics") or {}).get("delta") or {}
                     d_gap = d_delta.get("total_bound_gap")
                     orig_feasible = bool(inst_eval_by_id[b_id]["evaluation"].get("feasible"))
-                    if not orig_feasible:
-                        reproduced = d_payload.get("outcome") != "feasible"
-                    else:
-                        reproduced = (
-                            (isinstance(d_gap, int) and d_gap > 0)
-                            or (d_gap is None and bool(d_payload.get("objectives") and d_payload["objectives"][0] > 0))
+
+                    def _is_reproduced(payload: Mapping[str, Any], delta: Mapping[str, Any], gap: Any) -> bool:
+                        if not orig_feasible:
+                            return payload.get("outcome") != "feasible"
+                        return (
+                            (isinstance(gap, int) and gap > 0)
+                            or (gap is None and bool(payload.get("objectives") and payload["objectives"][0] > 0))
                         )
+
+                    reproduced = _is_reproduced(d_payload, d_delta, d_gap)
+
+                    if (
+                        reproduced
+                        and callable(getattr(evaluator.task, "subset_elements", None))
+                        and callable(getattr(evaluator.task, "rebuild_from_subset", None))
+                        and self._can_run_diagnostic(4)
+                    ):
+                        elements = list(evaluator.task.subset_elements(reduced))
+                        if len(elements) >= 4:
+                            best_dd = {
+                                "instance": reduced,
+                                "doc": diag_doc,
+                                "payload": d_payload,
+                                "delta": d_delta,
+                                "gap": d_gap,
+                                "dataset_id": diag_dataset_id,
+                                "probes": 0,
+                            }
+
+                            def _dd_reproduces(subset: list[Any]) -> bool:
+                                if len(subset) >= len(elements) or best_dd["probes"] >= 4 or not self._can_run_diagnostic(1):
+                                    return len(subset) == len(elements)
+                                candidate_inst = evaluator.task.rebuild_from_subset(reduced, subset)
+                                if candidate_inst is None:
+                                    return False
+                                best_dd["probes"] += 1
+                                sub_ds = f"diag-{digest(canonical_json(candidate_inst).encode('utf-8'))[:12]}"
+                                sub_doc = evaluator.evaluate_diagnostic(
+                                    source,
+                                    [candidate_inst],
+                                    dataset_id=sub_ds,
+                                    parent_id=target_att.record_id,
+                                    extra_tags=(f"bottleneck_inst:{b_id}", "diag_probe:ddmin"),
+                                )
+                                self.diagnostic_executions += 1
+                                sp = sub_doc["payload"]
+                                sd = (sp.get("diagnostics") or {}).get("delta") or {}
+                                sg = sd.get("total_bound_gap")
+                                if _is_reproduced(sp, sd, sg):
+                                    best_dd.update(
+                                        instance=candidate_inst,
+                                        doc=sub_doc,
+                                        payload=sp,
+                                        delta=sd,
+                                        gap=sg,
+                                        dataset_id=sub_ds,
+                                    )
+                                    return True
+                                return False
+
+                            await asyncio.to_thread(
+                                ddmin_reduce, elements, _dd_reproduces, min_size=2, max_probes=4,
+                            )
+                            reduced = best_dd["instance"]
+                            diag_doc = best_dd["doc"]
+                            d_payload = best_dd["payload"]
+                            d_delta = best_dd["delta"]
+                            d_gap = best_dd["gap"]
+                            diag_dataset_id = best_dd["dataset_id"]
 
                     entry: dict[str, Any] = {
                         "source_instance_id": b_id,
@@ -348,6 +412,88 @@ class ExperimentSelector:
                         "diagnostic_attempt_id": diag_doc["attempt_id"],
                         "emitted_claim_id": emitted_claim,
                     }
+
+        # Action 3: Active adversarial instance synthesis probing current best candidate.
+        best_meta = self.state.data.get("best")
+        gen_adv_fn = getattr(evaluator.task, "generate_adversarial_instances", None)
+        if (
+            isinstance(best_meta, Mapping)
+            and callable(gen_adv_fn)
+            and self._can_run_diagnostic(2)
+            and not any(key.startswith("adv__") for key in self.witness_bank)
+        ):
+            ext = getattr(evaluator.task, "candidate_extension", ".py")
+            best_path = self.state.root / f"best{ext}"
+            if best_path.is_file():
+                best_source = best_path.read_text(encoding="utf-8")
+                adv_seed = int(self.state.config.seed) + int(self.diagnostic_executions) * 37 + 11
+                adv_instances = list(gen_adv_fn(seed=adv_seed, count=2) or ())
+                for adv_inst in adv_instances:
+                    if not self._can_run_diagnostic(1):
+                        break
+                    adv_id = f"adv__{adv_inst['instance_id']}"
+                    diag_ds = f"diag-{digest(canonical_json(adv_inst).encode('utf-8'))[:12]}"
+                    adv_doc = await evaluator.run_diagnostic(
+                        best_source,
+                        [adv_inst],
+                        dataset_id=diag_ds,
+                        parent_id=best_meta.get("attempt_id"),
+                        extra_tags=(f"bottleneck_inst:{adv_id}", "diag_probe:adversarial"),
+                    )
+                    self.diagnostic_executions += 1
+                    ap = adv_doc["payload"]
+                    ad = (ap.get("diagnostics") or {}).get("delta") or {}
+                    ag = ad.get("total_bound_gap")
+                    hit_gap = ap.get("outcome") != "feasible" or (isinstance(ag, int) and ag > 0)
+                    if hit_gap:
+                        regime = str(ad.get("regime", "general_constructive"))
+                        with MemoryStore(db_path) as store:
+                            hyp_ev = store.append(
+                                "hypothesis",
+                                run_id,
+                                {
+                                    "statement": (
+                                        f"Adversarial instance {adv_inst['instance_id']} exposes defect/gap on best candidate "
+                                        f"(outcome={ap.get('outcome')}, objs={ap.get('objectives')}, gap={ag})."
+                                    ),
+                                    "test_plan": (
+                                        f"Generalize algorithm logic to eliminate defect/gap on synthetic adversarial instance "
+                                        f"{adv_inst['instance_id']} without regressing training fitness."
+                                    ),
+                                    "state": "open",
+                                    "support_ids": [],
+                                    "contradiction_ids": [],
+                                    "tags": [f"bottleneck_inst:{adv_id}", f"regime:{regime}", "adversarial_witness"],
+                                },
+                            )
+                        self.witness_bank[adv_id] = {
+                            "source_instance_id": adv_id,
+                            "source_attempt_id": best_meta.get("attempt_id"),
+                            "reduced_instance": adv_inst,
+                            "diag_dataset_id": diag_ds,
+                            "witness_attempt_id": adv_doc["attempt_id"],
+                            "witness_objectives": ap.get("objectives"),
+                            "witness_gap": ag,
+                            "reproduced": True,
+                            "compared_attempt_ids": [],
+                            "hypothesis_id": hyp_ev.record_id,
+                        }
+                        if context_adapter is not None:
+                            comment_prefix = "--" if getattr(evaluator.task, "candidate_language", "python") == "lean" else "#"
+                            context_adapter.active_experiment_directive = (
+                                f"- Active Adversarial Hypothesis `{hyp_ev.record_id}`: unseen synthetic witness "
+                                f"`{adv_inst['instance_id']}` exposed outcome={ap.get('outcome')}, "
+                                f"objectives={ap.get('objectives')}, bound_gap={ag}.\n"
+                                f"- Declare `{comment_prefix} pathweaver-hypothesis: {hyp_ev.record_id}` if your change addresses this case."
+                            )
+                        emitted_claim = self._maybe_emit_conjecture(run_id, stagnation_monitor)
+                        return {
+                            "action": "adversarial_probe",
+                            "instance_id": adv_id,
+                            "reproduced": True,
+                            "diagnostic_attempt_id": adv_doc["attempt_id"],
+                            "emitted_claim_id": emitted_claim,
+                        }
 
         emitted_claim = self._maybe_emit_conjecture(run_id, stagnation_monitor)
         return {"action": "noop", "emitted_claim_id": emitted_claim}

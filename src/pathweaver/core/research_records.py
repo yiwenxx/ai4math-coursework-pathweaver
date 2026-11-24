@@ -13,7 +13,7 @@ from pathweaver.core.contracts import canonical_json, require_text
 
 KINDS = {"run", "attempt", "hypothesis", "lesson", "route", "checkpoint", "invalidation"}
 IMMUTABLE_KINDS = {"run", "attempt", "checkpoint", "invalidation"}
-OUTCOMES = {"feasible", "invalid", "malformed", "timeout", "exception"}
+OUTCOMES = {"feasible", "invalid", "malformed", "timeout", "exception", "pruned_dominated"}
 VERIFICATIONS = {"verified", "unverified", "illustrative"}
 INVALIDATION_SEVERITIES = {"fatal", "boundary_drift", "superseded"}
 CONTEXT_EXPOSURE_KINDS = {"attempt", "hypothesis", "lesson", "route"}

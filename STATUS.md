@@ -2,6 +2,12 @@
 
 Updated: 2026-11-24 · Public development version: `0.2.0.dev1`
 
+## Next-Gen AI4Math Harness Upgrades & Audit Fixes (2026-11-24)
+
+- **Universal mathematical certificates & Lean RUP bridge (`core/certificates.py`, `formal/PathWeaverFormal/LratBridge.lean`)**: Added pure-Lean 4 `LratBridge.lean` (`rup_chain_unsat`, zero `sorry`) alongside host verifiers for `LRAT` SAT refutations (`verify_lrat_unsat`, `export_rup_lean_certificate`), exact-rational `VIPR` LP/MILP duals (`verify_vipr_milp_bound`), and sparse multivariate `Nullstellensatz` obstructions (`verify_nullstellensatz_obstruction`).
+- **Constructive PatternBoost, `ddmin`, metamorphic & surrogate checks (`core/constructive.py`, `core/ddmin.py`, `evaluation/metamorphic.py`, `evaluation/surrogate.py`, `tasks/jsp158_coloring/patternboost.py`)**: Added Zeller delta-debugging `ddmin_reduce`, two-phase `run_patternboost` (`pathweaver jsp158 patternboost`), isomorphic `permute_instance` + empirical scaling estimation, and ridge-regularized `SurrogateCalibrator`.
+- **Warm Lean 4 LSP pool, Apollo repair, premise/OEIS retrieval & Blueprint (`research/lean_server.py`, `research/lean_repair.py`, `research/premise_retrieval.py`, `research/blueprint.py`, `research/claims.py`)**: Added persistent `LeanServerPool`, subgoal-rewarding `lean_proof` scoring and `repair_lean_proof`, `PremiseIndex` + sequence recognizer (`pathweaver lean premises`, `pathweaver lean repair`), theorem-bound multi-theorem `ClaimLedger` verification, `BlueprintCompiler` (`pathweaver claims blueprint`), AST structural fingerprinting, MAP-Elites clone penalties, and noise-immune cached SQLite retrieval.
+
 ## Four-layer epistemic memory & witness reducers (2026-11-24)
 
 - Upgraded the research-memory stack with zero-cost L0 parent-child behavioral deltas (`memory/delta.py`, `# pathweaver-hypothesis:` / `# pathweaver-lesson:` attribution parsing), 3-slot structural + UCB-attributed retrieval (`memory/retrieval.py`), compact Prefix-Cache-safe prompt assembly (`context.py`, `context_adapter.py`), and persistent `StructuralStagnationMonitor` regime obstruction tracking (`strategy_escape.py`).
