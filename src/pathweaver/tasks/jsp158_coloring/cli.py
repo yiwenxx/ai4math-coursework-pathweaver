@@ -5,7 +5,7 @@ from pathlib import Path
 from pathweaver.core.contracts import SolveBudget, parse_strict_json, read_strict_json, write_json
 
 from . import Jsp158ColoringTaskPack
-from .cyclic import MAX_TEMPLATE_BYTES, MAX_TEMPLATE_SIZE, verify_template
+from .cyclic import MAX_ORDINARY_THREE_COLOR_SIZE, MAX_TEMPLATE_BYTES, MAX_TEMPLATE_SIZE, verify_template
 from .digit_lift import verify_digit_lift
 from .model import MAX_N, parse_instance
 
@@ -31,13 +31,15 @@ def add_jsp158_parser(subparsers):
         ("verify-digit-lift", "Check ABBA separation for integer digit products of every length"),
     ):
         template = commands.add_parser(name, help=help_text)
-        template.add_argument("template", type=Path, help=(
-            f"JSON object with colors or palettes of length 2 to {MAX_TEMPLATE_SIZE}, at most {MAX_TEMPLATE_BYTES} bytes"
-        ))
+        limits = f"length 2 to {MAX_TEMPLATE_SIZE}"
         if name == "verify-template":
+            limits += f" (up to {MAX_ORDINARY_THREE_COLOR_SIZE} for colors with --three-colors)"
             template.add_argument("--three-colors", action="store_true", help=(
                 "Require at least three labels on every nonzero-step cyclic four-term progression"
             ))
+        template.add_argument("template", type=Path, help=(
+            f"JSON object with colors or palettes, {limits}, at most {MAX_TEMPLATE_BYTES} bytes"
+        ))
 
 
 def run_jsp158_command(args, parser):

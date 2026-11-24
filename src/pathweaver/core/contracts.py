@@ -79,7 +79,14 @@ class TaskPack(Protocol):
 
 
 class DiscoveryTask(Protocol):
-    """Trusted discovery admission; ordered, nonnegative integer minimization."""
+    """Trusted discovery admission; ordered, nonnegative integer minimization.
+
+    Optional TaskPack discovery hooks supported by the shared harness:
+    - ``prepare_verifier(instance)`` / ``verify_prepared(prepared, solution, *, parent_solution=None)``
+    - ``paradigm_catalog()``
+    - ``reduce_instance(instance, evaluation, *, max_size=...)``
+    - ``certificate(instance, solution, evaluation)``
+    """
     task_id: str
 
     def prepare(self, instance: Mapping[str, Any]) -> Mapping[str, Any]: ...

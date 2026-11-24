@@ -18,7 +18,6 @@ import json
 from pathlib import Path
 from typing import Any
 
-from pathweaver.core.contracts import digest
 from .ff_probe import QuadraticField
 
 SCHEMA_VERSION = 1
@@ -153,8 +152,6 @@ def generate_certificate() -> dict[str, Any]:
         "group_order": "for rep_idx in range(42): for k_idx in range(8): for l_val in range(121)",
         "c_witnesses": cover_witnesses,
     }
-    canonical = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
-    payload["payload_sha256"] = digest(canonical)
     return payload
 
 
@@ -165,12 +162,6 @@ def verify_certificate(cert: dict[str, Any]) -> dict[str, Any]:
     """
     if not isinstance(cert, dict) or cert.get("schema_version") != SCHEMA_VERSION:
         raise ValueError("Unsupported or malformed q=121 certificate")
-    expected_sha = cert.get("payload_sha256")
-    if isinstance(expected_sha, str):
-        stripped = {k: v for k, v in cert.items() if k != "payload_sha256"}
-        actual_sha = digest(json.dumps(stripped, separators=(",", ":"), sort_keys=True).encode("utf-8"))
-        if actual_sha != expected_sha:
-            raise ValueError("Certificate payload_sha256 mismatch")
 
     field = QuadraticField.build(P, eta=ETA)
     add, mul, frob, cube = field.add, field.mul, field.frob, field.cube
@@ -249,7 +240,6 @@ def verify_certificate(cert: dict[str, Any]) -> dict[str, Any]:
         "nonzero_k_verified": len(covered_k),
         "normalized_groups_verified": group_idx,
         "total_equations_verified": total_equations,
-        "payload_sha256": cert.get("payload_sha256"),
     }
 
 

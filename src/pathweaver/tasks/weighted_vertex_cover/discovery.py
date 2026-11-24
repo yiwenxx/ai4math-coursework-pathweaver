@@ -72,6 +72,66 @@ class WeightedVertexCoverDiscoveryTask:
             "verification": asdict(result),
         }
 
+    def reduce_instance(self, instance, evaluation, *, max_size=12):
+        """Extract a valid induced subgraph around uncovered, redundant, or costly vertices."""
+        inst = parse_instance(instance)
+        if len(inst.vertex_ids) <= 4 or len(inst.edges) <= 2:
+            return None
+        target_cap = max(4, min(int(max_size), len(inst.vertex_ids) - 1))
+        diag = (evaluation.get("diagnostics") or {}) if isinstance(evaluation, dict) else {}
+
+        seeds: list[str] = []
+        for pair in diag.get("uncovered_edges") or ():
+            if isinstance(pair, (list, tuple)) and len(pair) == 2:
+                seeds.extend([str(pair[0]), str(pair[1])])
+        for item in diag.get("expensive_choices") or ():
+            if isinstance(item, dict) and item.get("id"):
+                seeds.append(str(item["id"]))
+            elif isinstance(item, str):
+                seeds.append(item)
+        for vid in diag.get("redundant_vertices") or ():
+            if isinstance(vid, str):
+                seeds.append(vid)
+        for vid in sorted(inst.vertex_ids, key=lambda v: (-inst.weights[v], -len(inst.adjacency[v]), v)):
+            seeds.append(vid)
+
+        core: list[str] = []
+        core_set: set[str] = set()
+        for vid in seeds:
+            if vid in inst.weights and vid not in core_set:
+                core.append(vid)
+                core_set.add(vid)
+                if len(core) >= target_cap:
+                    break
+        for vid in list(core):
+            if len(core) >= target_cap:
+                break
+            for nb in inst.adjacency.get(vid, ()):
+                if nb not in core_set:
+                    core.append(nb)
+                    core_set.add(nb)
+                    if len(core) >= target_cap:
+                        break
+
+        induced_edges = [[u, v] for u, v in inst.edges if u in core_set and v in core_set]
+        if len(core) >= len(inst.vertex_ids) or len(induced_edges) < 2:
+            return None
+        raw_reduced = {
+            "schema_version": SCHEMA_VERSION,
+            "task_id": TASK_ID,
+            "instance_id": f"{inst.instance_id}__diag_core",
+            "data": {
+                "vertices": core,
+                "weights": {vid: inst.weights[vid] for vid in core},
+                "edges": induced_edges,
+            },
+        }
+        try:
+            parse_instance(raw_reduced)
+        except ValueError:
+            return None
+        return self.prepare(raw_reduced)
+
     def feedback(self, result):
         d = result.diagnostics
         return {

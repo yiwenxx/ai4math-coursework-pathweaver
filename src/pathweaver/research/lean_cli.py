@@ -4,7 +4,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from pathweaver.core.contracts import EvidenceLevel, digest, read_strict_json, write_json
+from pathweaver.core.contracts import EvidenceLevel, read_strict_json, write_json
 from pathweaver.research.claims import ClaimLedger
 from pathweaver.research.formal_verifier import lean_toolchain_status, verify_formal_proof
 
@@ -51,7 +51,7 @@ def add_lean_parser(subparsers: Any) -> None:
     admit.add_argument("--file", required=True, type=Path, help="Lean 4 proof file (.lean) relative to bundle root")
     admit.add_argument("--theorem", help="Theorem name to audit via #print axioms")
     admit.add_argument("--project-dir", type=Path, help="Optional Lake project directory")
-    admit.add_argument("--evidence-id", help="Evidence record ID (defaults to <claim-id>-lean-<sha8>)")
+    admit.add_argument("--evidence-id", help="Evidence record ID (defaults to <claim-id>-lean-<stem>)")
     admit.add_argument("--summary", help="Short summary of the verified Lean theorem")
     admit.add_argument("--timeout", type=float, default=60.0)
     admit.add_argument("--apply", action="store_true", help="Write the new formal_proof entry into --bundle")
@@ -141,10 +141,9 @@ def _cmd_admit_claim(args: argparse.Namespace, parser: argparse.ArgumentParser) 
     if args.claim_id not in ledger.claims:
         raise ValueError(f"Unknown claim ID in bundle: {args.claim_id!r}")
 
-    sha = digest(raw_bytes)
     theorem_label = args.theorem or "checked_module"
     entry = {
-        "id": args.evidence_id or f"{args.claim_id}-lean-{sha[:8]}",
+        "id": args.evidence_id or f"{args.claim_id}-lean-{proof_path.stem}",
         "claim_id": args.claim_id,
         "kind": "formal_proof",
         "summary": args.summary or (
@@ -152,7 +151,6 @@ def _cmd_admit_claim(args: argparse.Namespace, parser: argparse.ArgumentParser) 
             f"(axioms: {', '.join(verdict.axioms) if verdict.axioms else 'none'})"
         ),
         "source": proof_path.relative_to(bundle_root).as_posix(),
-        "sha256": sha,
     }
     updated = {
         "schema_version": bundle["schema_version"],

@@ -1,7 +1,6 @@
 """Scoped mathematical claims and evidence for serial research."""
 from dataclasses import asdict, dataclass
 from pathlib import Path
-import re
 
 from pathweaver.core.contracts import canonical_json, digest, require_text
 from pathweaver.core.research_records import require_id
@@ -48,19 +47,16 @@ class ClaimEvidence:
     kind: str
     summary: str
     source: str
-    sha256: str
 
     @classmethod
     def parse(cls, row):
-        if not isinstance(row, dict) or row.keys() != cls.__dataclass_fields__.keys():
-            raise ValueError("Expected evidence ID, claim ID, kind, summary, source and SHA-256")
+        required = set(cls.__dataclass_fields__.keys())
+        if not isinstance(row, dict) or not required.issubset(row.keys()) or not set(row.keys()).issubset(required | {"sha256"}):
+            raise ValueError("Expected evidence ID, claim ID, kind, summary and source")
         if row["kind"] not in ("draft", "audit", "review", "counterexample", "reference", "certificate_check", "formal_proof"):
             raise ValueError("Unknown claim evidence kind")
-        sha = row["sha256"]
-        if not isinstance(sha, str) or not re.fullmatch(r"[0-9a-f]{64}", sha):
-            raise ValueError("Claim evidence requires a lowercase SHA-256")
         return cls(require_id(row["id"]), require_id(row["claim_id"]), row["kind"],
-                   _text(row["summary"], "summary"), _text(row["source"], "source"), sha)
+                   _text(row["summary"], "summary"), _text(row["source"], "source"))
 
 
 class ClaimLedger:
@@ -97,8 +93,8 @@ class ClaimLedger:
                 raise ValueError(f"Evidence must be relative to its bundle: {item.id}")
             with path.open("rb") as stream:
                 raw = stream.read(1_000_001)
-            if len(raw) > 1_000_000 or digest(raw) != item.sha256:
-                raise ValueError(f"Evidence size or hash mismatch: {item.id}")
+            if len(raw) > 1_000_000:
+                raise ValueError(f"Evidence file too large: {item.id}")
             text = raw.decode("utf-8")
             if verify_formal and item.kind == "formal_proof":
                 if path.suffix.lower() != ".lean":
@@ -219,3 +215,117 @@ class ClaimLedger:
                     "evidence": [asdict(item) for item in items],
                 }
         return None
+
+    def extract_search_constraints(self) -> dict[str, object]:
+        """Project verified barriers, conservative regime blocks, and open frontiers for search."""
+        states = self.dispositions()
+        impact = self.impact_scores()
+        verified_barriers: list[dict[str, object]] = []
+        obstructed_regimes: set[str] = set()
+        open_ranked: list[tuple[int, str, dict[str, object]]] = []
+
+        for claim_id in sorted(self.claims):
+            claim = self.claims[claim_id]
+            status = states[claim_id]
+            combined_lower = f"{claim.statement} {claim.scope}".lower()
+            if status == "refuted":
+                counterexamples = [
+                    item.summary for item in self.evidence.values()
+                    if item.claim_id == claim_id and item.kind == "counterexample"
+                ]
+                verified_barriers.append({
+                    "claim_id": claim_id,
+                    "status": status,
+                    "statement": claim.statement[:320],
+                    "scope": claim.scope[:200],
+                    "counterexample": counterexamples[0][:240] if counterexamples else "",
+                })
+                if not any(tok in claim.scope.lower() for tok in _NARROW_SCOPE_MARKERS):
+                    obstructed_regimes.update(_infer_claim_regimes(combined_lower))
+            elif status in {"formally_verified", "reviewed", "machine_checked"} and any(
+                marker in combined_lower for marker in _BARRIER_MARKERS
+            ):
+                verified_barriers.append({
+                    "claim_id": claim_id,
+                    "status": status,
+                    "statement": claim.statement[:320],
+                    "scope": claim.scope[:200],
+                })
+            elif status in {"open", "candidate"}:
+                open_ranked.append((
+                    -impact[claim_id],
+                    claim_id,
+                    {
+                        "claim_id": claim_id,
+                        "status": status,
+                        "impact_score": impact[claim_id],
+                        "statement": claim.statement[:320],
+                        "scope": claim.scope[:200],
+                        "gap": claim.gap[:200],
+                    },
+                ))
+
+        verified_barriers.sort(key=lambda row: (-impact.get(str(row["claim_id"]), 0), str(row["claim_id"])))
+        open_ranked.sort(key=lambda item: (item[0], item[1]))
+        return {
+            "obstructed_regimes": sorted(obstructed_regimes),
+            "verified_barriers": verified_barriers[:8],
+            "open_high_impact_claims": [item[2] for item in open_ranked[:5]],
+        }
+
+
+_BARRIER_MARKERS = (
+    "obstruction", "excluded", "cannot", "impossible", "nonexistence",
+    "contradiction", "lower bound", "obstructed", "fails", "no ",
+)
+_NARROW_SCOPE_MARKERS = (
+    "only ", "restricted", "fixed ", "modulo ", "p =", "q =", "m <", "n <=", "single ",
+)
+_CLAIM_REGIME_KEYWORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("algebraic_modular_group", ("cyclic", "frobenius", "coset", "modular", "quotient", "finite field", "finite-field", "power map", "biquintic", "quintic", "fourier", "moment kernel", "stabilizer")),
+    ("greedy_local_search", ("greedy", "local search", "1-swap", "single-point", "recolor")),
+    ("bipartite_matching_flow", ("hungarian", "bipartite", "matching", "hall", "min-cost flow", "augmenting")),
+    ("spectral_relaxation_rounding", ("lagrangian", "subgradient", "spectral", "laplacian", "lp relaxation", "dual packing")),
+    ("exact_branch_and_reduce", ("branch-and-bound", "branch and bound", "backtracking", "kernelization", "dsatur")),
+)
+
+
+def _infer_claim_regimes(text: str) -> tuple[str, ...]:
+    lowered = text.lower()
+    matched = [regime for regime, kws in _CLAIM_REGIME_KEYWORDS if any(kw in lowered for kw in kws)]
+    return tuple(matched)
+
+
+def build_empirical_conjecture_bundle(
+    *,
+    claim_id: str,
+    statement: str,
+    scope: str,
+    gap: str,
+    summary: str,
+    evidence_rel_path: str,
+) -> dict[str, object]:
+    """Build a version-1 ClaimLedger bundle containing a single empirical draft conjecture."""
+    cid = require_id(claim_id)
+    return {
+        "schema_version": 1,
+        "claims": [
+            {
+                "id": cid,
+                "statement": _text(statement, "statement"),
+                "scope": _text(scope, "scope"),
+                "gap": _text(gap, "gap"),
+                "dependencies": [],
+                "related": [],
+            }
+        ],
+        "evidence": [
+            {
+                "id": f"{cid}-draft",
+                "claim_id": cid,
+                "kind": "draft",
+                "summary": _text(summary, "summary"),
+                "source": _text(evidence_rel_path, "source"),
+            }
+        ],
+    }

@@ -6,8 +6,8 @@ targeted global paradigm jump using task-declared mathematical reformulations.
 """
 import ast
 from collections import Counter
-from collections.abc import Sequence
-from dataclasses import dataclass
+from collections.abc import Mapping, Sequence
+from dataclasses import asdict, dataclass
 from typing import Any
 
 
@@ -137,6 +137,10 @@ class StructuralStagnationMonitor:
         self.no_improve_streak: int = 0
         self.history: list[dict[str, Any]] = []
         self.paradigm_attempts: Counter[str] = Counter()
+        self.regime_attempts: Counter[str] = Counter()
+        self.regime_improvements: Counter[str] = Counter()
+        self.regime_trap_triggers: Counter[str] = Counter()
+        self.empirical_obstructed_regimes: dict[str, str] = {}
         self.steps_since_trigger: int = self.cooldown_steps
         self.last_directive: ParadigmDirective | None = None
 
@@ -150,6 +154,7 @@ class StructuralStagnationMonitor:
         failure_summary: str = "",
     ) -> None:
         regime = classify_algorithmic_regime(source, language=self.language)
+        self.regime_attempts[regime] += 1
         improved = False
         if objectives is not None:
             obj_tuple = tuple(int(v) for v in objectives)
@@ -157,6 +162,8 @@ class StructuralStagnationMonitor:
                 self.best_objectives = obj_tuple
                 self.no_improve_streak = 0
                 improved = True
+                self.regime_improvements[regime] += 1
+                self.empirical_obstructed_regimes.pop(regime, None)
             else:
                 self.no_improve_streak += 1
         else:
@@ -197,8 +204,20 @@ class StructuralStagnationMonitor:
         if dominant_ratio < 0.5 and self.no_improve_streak < self.stagnation_window + 2:
             return None
 
+        self.regime_trap_triggers[trapped_regime] += 1
+        stalled_in_regime = (
+            sum(
+                1 for row in self.history[-5:]
+                if row.get("regime") == trapped_regime and not row.get("improved")
+            ) >= 5
+        )
+        if self.regime_trap_triggers[trapped_regime] >= 2 and stalled_in_regime:
+            self.empirical_obstructed_regimes[trapped_regime] = (
+                "repeated empirical stagnation without exact-tuple progress"
+            )
+
         palette = list(catalog) if catalog else list(DEFAULT_PARADIGM_CATALOG)
-        blocked = set(obstructed_regimes) | {trapped_regime}
+        blocked = set(obstructed_regimes) | set(self.empirical_obstructed_regimes) | {trapped_regime}
         candidates = [entry for entry in palette if entry.get("regime") not in blocked]
         if not candidates:
             candidates = [entry for entry in palette if entry.get("regime") != trapped_regime] or palette
@@ -225,3 +244,39 @@ class StructuralStagnationMonitor:
         )
         self.last_directive = directive
         return directive
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "stagnation_window": self.stagnation_window,
+            "cooldown_steps": self.cooldown_steps,
+            "language": self.language,
+            "best_objectives": list(self.best_objectives) if self.best_objectives is not None else None,
+            "no_improve_streak": self.no_improve_streak,
+            "history": list(self.history),
+            "paradigm_attempts": dict(self.paradigm_attempts),
+            "regime_attempts": dict(self.regime_attempts),
+            "regime_improvements": dict(self.regime_improvements),
+            "regime_trap_triggers": dict(self.regime_trap_triggers),
+            "empirical_obstructed_regimes": dict(self.empirical_obstructed_regimes),
+            "steps_since_trigger": self.steps_since_trigger,
+            "last_directive": asdict(self.last_directive) if self.last_directive is not None else None,
+        }
+
+    def load_state(self, raw: Mapping[str, Any]) -> None:
+        if not isinstance(raw, Mapping):
+            return
+        best = raw.get("best_objectives")
+        self.best_objectives = tuple(int(v) for v in best) if isinstance(best, list) and best else None
+        self.no_improve_streak = int(raw.get("no_improve_streak", 0))
+        history = raw.get("history")
+        self.history = [dict(row) for row in history if isinstance(row, Mapping)][-64:] if isinstance(history, list) else []
+        self.paradigm_attempts = Counter({str(k): int(v) for k, v in (raw.get("paradigm_attempts") or {}).items()})
+        self.regime_attempts = Counter({str(k): int(v) for k, v in (raw.get("regime_attempts") or {}).items()})
+        self.regime_improvements = Counter({str(k): int(v) for k, v in (raw.get("regime_improvements") or {}).items()})
+        self.regime_trap_triggers = Counter({str(k): int(v) for k, v in (raw.get("regime_trap_triggers") or {}).items()})
+        self.empirical_obstructed_regimes = {
+            str(k): str(v) for k, v in (raw.get("empirical_obstructed_regimes") or {}).items()
+        }
+        self.steps_since_trigger = int(raw.get("steps_since_trigger", self.cooldown_steps))
+        last = raw.get("last_directive")
+        self.last_directive = ParadigmDirective(**last) if isinstance(last, Mapping) else None

@@ -1,6 +1,11 @@
 # Current status
 
-Updated: 2026-11-23 · Public development version: `0.2.0.dev1`
+Updated: 2026-11-24 · Public development version: `0.2.0.dev1`
+
+## Four-layer epistemic memory & witness reducers (2026-11-24)
+
+- Upgraded the research-memory stack with zero-cost L0 parent-child behavioral deltas (`memory/delta.py`, `# pathweaver-hypothesis:` / `# pathweaver-lesson:` attribution parsing), 3-slot structural + UCB-attributed retrieval (`memory/retrieval.py`), compact Prefix-Cache-safe prompt assembly (`context.py`, `context_adapter.py`), and persistent `StructuralStagnationMonitor` regime obstruction tracking (`strategy_escape.py`).
+- Added dual-speed event-triggered `MemoryConsolidator` (`research/consolidator.py`, zero-cost sterile retirement / hypothesis adjudication / stepping-stone crystallization + anti-hallucination LLM gating), `ExperimentSelector` (`research/experiment_selector.py`) with domain-isolated `reduce_instance` witness reducers across EDA (`eda_assignment`), WVC (`weighted_vertex_cover`), and JSP-000158 (`jsp158_coloring`), plus `ClaimLedger.extract_search_constraints()` and `build_empirical_conjecture_bundle()`.
 
 ## JSP-000158 Lean 4 finite bounds & obstruction update (2026-11-22 — 2026-11-23)
 

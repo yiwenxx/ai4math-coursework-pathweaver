@@ -2,19 +2,20 @@
 from typing import Any
 
 
-# At the limit the host checks 16,773,120 ordered progressions without storing them.
 MAX_TEMPLATE_SIZE = 4096
+MAX_ORDINARY_THREE_COLOR_SIZE = 8192
 MAX_TEMPLATE_BYTES = 1_048_576
 
 
-def parse_template(template: Any) -> tuple[list[frozenset[int]], int, int]:
+def parse_template(template: Any, *, three_colors: bool = False) -> tuple[list[frozenset[int]], int, int]:
     """Return the sets of labels, size of their union, and minimum width."""
     if not isinstance(template, dict) or template.keys() not in ({"colors"}, {"palettes"}):
         raise ValueError("expected exactly one array, colors or palettes")
     key = next(iter(template))
     rows = template[key]
-    if not isinstance(rows, list) or not 2 <= len(rows) <= MAX_TEMPLATE_SIZE:
-        raise ValueError(f"expected a {key} array of length 2 to {MAX_TEMPLATE_SIZE}")
+    limit = MAX_ORDINARY_THREE_COLOR_SIZE if three_colors and key == "colors" else MAX_TEMPLATE_SIZE
+    if not isinstance(rows, list) or not 2 <= len(rows) <= limit:
+        raise ValueError(f"expected a {key} array of length 2 to {limit}")
     if key == "colors":
         if any(type(label) is not int or label < 0 for label in rows):
             raise ValueError("color labels must be nonnegative integers")
@@ -64,12 +65,87 @@ def _minimum_cover_partition(rows):
     return ((0,), (1,), (2,), (3,))
 
 
+def _ordinary_three_color_counts(colors: list[int]):
+    m = len(colors)
+    full = (1 << m) - 1
+    indices = {label: i for i, label in enumerate(dict.fromkeys(colors))}
+    codes = [indices[label] for label in colors]
+    planes = []
+    for bit in range((len(indices) - 1).bit_length()):
+        plane = sum(1 << i for i, code in enumerate(codes) if (code >> bit) & 1)
+        planes.append((plane, plane | (plane << m)))
+
+    # equals[t] has bit x exactly when color[x] == color[x+t] modulo m.
+    equals = []
+    for offset in range(m):
+        differences = 0
+        for plane, doubled in planes:
+            differences |= plane ^ (doubled >> offset)
+        equals.append(full & ~differences)
+
+    def shifted(bits: int, offset: int) -> int:
+        return (bits >> offset) | ((bits << (m - offset)) & full)
+
+    histogram = [0] * 5
+    first = None
+    for step in range(1, m):
+        twice = (2 * step) % m
+        # A position repeats if it matches any earlier position in this 4-AP.
+        # With k repeats, the four positions use exactly 4-k distinct labels.
+        repeat1 = equals[step]
+        repeat2 = equals[twice] | shifted(equals[step], step)
+        repeat3 = equals[(3 * step) % m] | shifted(equals[twice], step) | shifted(equals[step], twice)
+        either = repeat1 | repeat2
+        both = repeat1 & repeat2
+        any_repeat = (either | repeat3).bit_count()
+        violations = both | (either & repeat3)
+        at_least_two = violations.bit_count()
+        all_three = (both & repeat3).bit_count()
+        histogram[1] += all_three
+        histogram[2] += at_least_two - all_three
+        histogram[3] += any_repeat - at_least_two
+        histogram[4] += m - any_repeat
+        if violations:
+            start = (violations & -violations).bit_length() - 1
+            if first is None or (start, step) < first:
+                first = (start, step)
+
+    witness = None
+    if first is not None:
+        start, step = first
+        positions = [(start + j * step) % m for j in range(4)]
+        labels = [colors[i] for i in positions]
+        witness = {"start": start, "step": step, "positions": positions,
+                   "chosen_labels": labels, "cover": sorted(set(labels))}
+    return histogram, witness
+
+
+def _fractional_three_color_counts(entries: list[frozenset[int]]):
+    m = len(entries)
+    histogram = [0] * 5
+    first_witness = None
+    for start in range(m):
+        for step in range(1, m):
+            positions = (start, (start + step) % m, (start + 2 * step) % m, (start + 3 * step) % m)
+            rows = tuple(entries[i] for i in positions)
+            partition = _minimum_cover_partition(rows)
+            count = len(partition)
+            histogram[count] += 1
+            if count <= 2 and first_witness is None:
+                cover = {min(frozenset.intersection(*(rows[i] for i in group))) for group in partition}
+                # Repeated visits to the same residue receive the same label.
+                labels = [min(row & cover) for row in rows]
+                first_witness = {"start": start, "step": step, "positions": list(positions),
+                                 "chosen_labels": labels, "cover": sorted(set(labels))}
+    return histogram, first_witness
+
+
 def _verify_three_colors(template: Any) -> dict[str, Any]:
     # The archive's modulus and origin identify the positions. Recompute every
     # certificate field, including palette cardinality and progression counts.
     if isinstance(template, dict) and "modulus" in template:
         payload = {key: template[key] for key in ("colors", "palettes") if key in template}
-        entries, a, b = parse_template(payload)
+        entries, a, b = parse_template(payload, three_colors=True)
         if type(template["modulus"]) is not int or template["modulus"] != len(entries):
             raise ValueError("modulus must equal the number of template positions")
         origin = template.get("first_residue", 0)
@@ -77,33 +153,14 @@ def _verify_three_colors(template: Any) -> dict[str, Any]:
             raise ValueError("the template must begin at residue zero")
         template = payload
     else:
-        entries, a, b = parse_template(template)
+        entries, a, b = parse_template(template, three_colors=True)
 
     m = len(entries)
     colors = template.get("colors")
-    histogram = [0] * 5
-    first_witness = None
-    for start in range(m):
-        for step in range(1, m):
-            positions = (start, (start + step) % m, (start + 2 * step) % m, (start + 3 * step) % m)
-            if colors is not None:
-                labels = tuple(colors[i] for i in positions)
-                count = len(set(labels))
-            else:
-                rows = tuple(entries[i] for i in positions)
-                partition = _minimum_cover_partition(rows)
-                count = len(partition)
-            histogram[count] += 1
-            if count <= 2 and first_witness is None:
-                if colors is None:
-                    cover = {min(frozenset.intersection(*(rows[i] for i in group))) for group in partition}
-                    # The same residue receives the same label if a small-order
-                    # step visits it twice.
-                    labels = tuple(min(row & cover) for row in rows)
-                first_witness = {
-                    "start": start, "step": step, "positions": list(positions),
-                    "chosen_labels": list(labels), "cover": sorted(set(labels)),
-                }
+    if colors is not None:
+        histogram, first_witness = _ordinary_three_color_counts(colors)
+    else:
+        histogram, first_witness = _fractional_three_color_counts(entries)
 
     valid = histogram[1] + histogram[2] == 0
     lhs, rhs = m**5 * b**21, a**21

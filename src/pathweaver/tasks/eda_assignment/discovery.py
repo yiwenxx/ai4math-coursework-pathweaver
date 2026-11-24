@@ -4,7 +4,7 @@ from functools import reduce
 from math import gcd
 
 from .evaluator import _arrival_times, evaluate, evaluate_prepared, prepare_verifier
-from .model import TASK_ID, geometric_length, parse_instance
+from .model import TASK_ID, InvalidInstanceError, find_matching, geometric_length, parse_instance
 
 
 class EdaDiscoveryTask:
@@ -83,6 +83,80 @@ class EdaDiscoveryTask:
             return None
         return {"schema_version": 1, "kind": f"eda_{result.evidence.value}_certificate",
                 "instance": instance, "solution": solution, "verification": asdict(result)}
+
+    def reduce_instance(self, instance, evaluation, *, max_size=12):
+        """Extract a smaller valid Hall/critical-path sub-instance reproducing the bottleneck."""
+        inst = parse_instance(instance)
+        if len(inst.edges) <= 2:
+            return None
+        diag = (evaluation.get("diagnostics") or {}) if isinstance(evaluation, dict) else {}
+        crit_path = [str(eid) for eid in (diag.get("critical_path") or [])]
+        edge_by_id = {edge.id: edge for edge in inst.edges}
+
+        kept_ids: list[str] = [eid for eid in crit_path if eid in edge_by_id]
+        if not kept_ids:
+            kept_ids = [edge.id for edge in inst.cross_edges[:max(1, min(3, max_size))]]
+        kept_set = set(kept_ids)
+
+        movable_count = sum(1 for eid in kept_set if edge_by_id[eid].delay is None)
+        crit_sites = {
+            site for eid in kept_set if edge_by_id[eid].delay is None
+            for site in edge_by_id[eid].eligible_sites
+        }
+        for edge in inst.cross_edges:
+            if movable_count >= max_size:
+                break
+            if edge.id not in kept_set and (not crit_sites or any(s in crit_sites for s in edge.eligible_sites)):
+                kept_ids.append(edge.id)
+                kept_set.add(edge.id)
+                movable_count += 1
+        if movable_count == 0:
+            for edge in inst.cross_edges[:max_size]:
+                if edge.id not in kept_set:
+                    kept_ids.append(edge.id)
+                    kept_set.add(edge.id)
+                    movable_count += 1
+
+        if not kept_set or len(kept_set) >= len(inst.edges):
+            return None
+
+        kept_edges = [edge for edge in inst.edges if edge.id in kept_set]
+        node_ids = {edge.source for edge in kept_edges} | {edge.target for edge in kept_edges}
+        site_ids = {site for edge in kept_edges if edge.delay is None for site in edge.eligible_sites}
+        raw_reduced = {
+            "schema_version": 1,
+            "task_id": TASK_ID,
+            "instance_id": f"{inst.instance_id}__diag_reduced",
+            "data": {
+                "nodes": [
+                    {"id": n.id, "x": n.x, "y": n.y, "tier": n.tier}
+                    for n in inst.nodes.values() if n.id in node_ids
+                ],
+                "sites": [
+                    {"id": s.id, "x": s.x, "y": s.y}
+                    for s in inst.sites.values() if s.id in site_ids
+                ],
+                "edges": [
+                    (
+                        {"id": e.id, "source": e.source, "target": e.target, "delay": e.delay}
+                        if e.delay is not None
+                        else {
+                            "id": e.id, "source": e.source, "target": e.target,
+                            "base_delay": e.base_delay, "alpha": e.alpha,
+                            "eligible_sites": list(e.eligible_sites),
+                        }
+                    )
+                    for e in kept_edges
+                ],
+            },
+        }
+        try:
+            parsed = parse_instance(raw_reduced)
+        except InvalidInstanceError:
+            return None
+        if find_matching(parsed) is None:
+            return None
+        return self.prepare(raw_reduced)
 
     def brief(self):
         return '''Implement a standalone Python standard-library function solve(instance, budget) returning a JSON object.

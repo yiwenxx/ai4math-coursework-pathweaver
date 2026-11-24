@@ -68,6 +68,37 @@ class Jsp158DiscoveryTask:
             "verification": asdict(result),
         }
 
+    def reduce_instance(self, instance, evaluation, *, max_size=32):
+        """Shrink interval length N while keeping a valid [1, N] JSP-000158 instance."""
+        inst = parse_instance(instance)
+        if inst.n <= 12:
+            return None
+        diag = (evaluation.get("diagnostics") or {}) if isinstance(evaluation, dict) else {}
+        target_n = None
+        if not evaluation.get("feasible") and diag.get("violating_progressions"):
+            progs = [p for p in diag["violating_progressions"] if isinstance(p, (list, tuple)) and p]
+            if progs:
+                cand = max(int(x) for p in progs for x in p)
+                if 4 <= cand < inst.n:
+                    target_n = cand
+        if target_n is None:
+            cand = max(12, min(inst.n - 4, max(int(max_size), inst.n // 2)))
+            if 4 <= cand < inst.n:
+                target_n = cand
+        if target_n is None:
+            return None
+        raw_reduced = {
+            "schema_version": SCHEMA_VERSION,
+            "task_id": TASK_ID,
+            "instance_id": f"{inst.instance_id}__diag_n{int(target_n)}",
+            "data": {"n": int(target_n)},
+        }
+        try:
+            parse_instance(raw_reduced)
+        except ValueError:
+            return None
+        return self.prepare(raw_reduced)
+
     def feedback(self, result):
         diagnostics = result.diagnostics
         return {"feasible": result.feasible, "objectives": result.objectives,
